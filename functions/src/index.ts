@@ -1,5 +1,13 @@
 import { onCall } from "firebase-functions/v2/https";
 import { onRequest } from "firebase-functions/v2/https";
+import { initializeApp } from "firebase-admin/app";
+// import { getFirestore } from "firebase-admin/firestore";
+
+// Initialize Firebase Admin SDK
+initializeApp();
+
+// Get Firestore database instance for future use
+// const db = getFirestore();
 
 /**
  * Shared business logic
