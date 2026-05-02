@@ -58,3 +58,86 @@ export const createItem = onRequest(async (req, res) => {
     res.status(400).json({ error: "Failed to create item" });
   }
 });
+
+/**
+ * READ - Get all items from Firestore with pagination support
+ * Accepts GET request with optional query parameters:
+ *   - limit: number of items to fetch (default: 10, max: 100)
+ *   - offset: number of items to skip (default: 0)
+ * Returns array of items with pagination info
+ */
+export const getAllItems = onRequest(async (req, res) => {
+  try {
+    // Parse query parameters with defaults and validation
+    let limit = parseInt(req.query.limit as string) || 10;
+    let offset = parseInt(req.query.offset as string) || 0;
+
+    // Validate and constrain limit
+    if (limit < 1 || limit > 100) {
+      limit = 10;
+    }
+    if (offset < 0) {
+      offset = 0;
+    }
+
+    // Get total count of items
+    const totalSnapshot = await itemsCollection.count().get();
+    const total = totalSnapshot.data().count;
+
+    // Get paginated items
+    const snapshot = await itemsCollection
+      .limit(limit + offset)
+      .get();
+
+    // Apply offset to results
+    const items = snapshot.docs
+      .slice(offset, offset + limit)
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+    // Return items with pagination metadata
+    res.status(200).json({
+      data: items,
+      pagination: {
+        total,
+        limit,
+        offset,
+        count: items.length,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({ error: "Failed to fetch items" });
+  }
+});
+
+/**
+ * READ - Get a single item by ID from Firestore
+ * Accepts GET request with itemId parameter
+ * Returns the item with specified ID or 404 if not found
+ */
+export const getItemById = onRequest(async (req, res) => {
+  try {
+    const itemId = req.query.id as string;
+
+    if (!itemId) {
+      res.status(400).json({ error: "Item ID is required" });
+      return;
+    }
+
+    const doc = await itemsCollection.doc(itemId).get();
+
+    if (!doc.exists) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+
+    res.status(200).json({
+      id: doc.id,
+      ...doc.data(),
+    });
+  } catch (error) {
+    res.status(400).json({ error: "Failed to fetch item" });
+  }
+});
