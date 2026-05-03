@@ -185,3 +185,38 @@ export const updateItem = onRequest(async (req, res) => {
     res.status(400).json({ error: "Failed to update item" });
   }
 });
+
+/**
+ * DELETE - Delete an item from Firestore
+ * Accepts DELETE request with item ID as query parameter
+ * Returns confirmation message with deleted item ID
+ */
+export const deleteItem = onRequest(async (req, res) => {
+  try {
+    const itemId = req.query.id as string;
+
+    if (!itemId) {
+      res.status(400).json({ error: "Item ID is required" });
+      return;
+    }
+
+    // Check if document exists
+    const doc = await itemsCollection.doc(itemId).get();
+
+    if (!doc.exists) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+
+    // Delete the document
+    await itemsCollection.doc(itemId).delete();
+
+    // Return confirmation
+    res.status(200).json({
+      message: "Item deleted successfully",
+      id: itemId,
+    });
+  } catch (error) {
+    res.status(400).json({ error: "Failed to delete item" });
+  }
+});
