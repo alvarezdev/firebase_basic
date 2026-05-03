@@ -141,3 +141,47 @@ export const getItemById = onRequest(async (req, res) => {
     res.status(400).json({ error: "Failed to fetch item" });
   }
 });
+
+/**
+ * UPDATE - Update an existing item in Firestore
+ * Accepts PUT request with item ID and fields to update
+ * Returns the updated item with its ID
+ */
+export const updateItem = onRequest(async (req, res) => {
+  try {
+    const itemId = req.query.id as string;
+    const updateData = req.body;
+
+    if (!itemId) {
+      res.status(400).json({ error: "Item ID is required" });
+      return;
+    }
+
+    if (!updateData || Object.keys(updateData).length === 0) {
+      res.status(400).json({ error: "Update data is required" });
+      return;
+    }
+
+    // Check if document exists
+    const doc = await itemsCollection.doc(itemId).get();
+
+    if (!doc.exists) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+
+    // Update the document with merge to avoid overwriting entire document
+    await itemsCollection.doc(itemId).update(updateData);
+
+    // Fetch the updated document
+    const updatedDoc = await itemsCollection.doc(itemId).get();
+
+    // Return the updated item
+    res.status(200).json({
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
+    });
+  } catch (error) {
+    res.status(400).json({ error: "Failed to update item" });
+  }
+});
