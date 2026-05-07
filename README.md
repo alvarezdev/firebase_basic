@@ -11,7 +11,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Cloud Storage**: subir, descargar, listar y borrar archivos.
 - ✅ **Firebase Admin SDK**: inicialización centralizada para Firestore y Storage.
 - ✅ **Emuladores**: configuración para Functions, Firestore, Auth, Storage y Emulator UI.
-- 🔜 **Authentication**: pendiente de implementar en flujos reales.
+- ✅ **Authentication**: registro básico de usuarios con Firebase Auth.
 - 🔜 **Reglas seguras**: actualmente hay reglas temporales abiertas para aprendizaje.
 - 🔜 **Tests automatizados**: pendiente.
 
@@ -24,6 +24,7 @@ firebase_basic/
 │   │   ├── config/
 │   │   │   └── firebase.ts          # Inicialización de Firebase Admin SDK
 │   │   ├── services/
+│   │   │   ├── authService.ts       # Operaciones básicas de Authentication
 │   │   │   ├── firestoreService.ts  # Operaciones CRUD para Firestore
 │   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
 │   │   │   └── index.ts             # Export centralizado de servicios
@@ -128,6 +129,41 @@ Respuesta:
 ```
 
 > Nota: las funciones no definen una región explícita en el código, por eso usan la región por defecto de Cloud Functions.
+
+### Authentication
+
+Crear usuario con email y contraseña:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"secret123","displayName":"Demo User"}'
+```
+
+Respuesta:
+
+```json
+{
+  "uid": "<firebase-auth-uid>",
+  "email": "demo@example.com",
+  "displayName": "Demo User",
+  "emailVerified": false,
+  "disabled": false
+}
+```
+
+Login y logout normalmente se hacen desde el SDK cliente de Firebase Auth:
+
+```javascript
+import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
+
+const auth = getAuth();
+
+await signInWithEmailAndPassword(auth, email, password);
+await signOut(auth);
+```
+
+Después del login, el cliente puede pedir un ID token con `auth.currentUser.getIdToken()`. Ese token será el que usaremos más adelante para proteger los endpoints de Firestore y Storage.
 
 ### Firestore
 
@@ -239,8 +275,8 @@ allow read, write: if request.auth != null;
 
 ### Fase 4: Authentication
 
-- [ ] Registro de usuarios.
-- [ ] Login/logout.
+- [x] Registro básico de usuarios.
+- [ ] Login/logout desde una app cliente.
 - [ ] Protección de endpoints.
 - [ ] Reglas de Firestore y Storage basadas en `request.auth`.
 

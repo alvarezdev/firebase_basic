@@ -1,6 +1,6 @@
 import { onCall } from "firebase-functions/v2/https";
 import { onRequest } from "firebase-functions/v2/https";
-import { firestoreService, storageService } from "./services";
+import { authService, firestoreService, storageService } from "./services";
 
 /**
  * Shared business logic
@@ -23,6 +23,20 @@ export const helloCall = onCall(async () => {
 export const helloHttp = onRequest(async (req, res) => {
   const result = await getHelloMessage();
   res.json(result);
+});
+
+// ============ AUTH ENDPOINTS ============
+
+/**
+ * REGISTER - Create a new Firebase Auth user
+ */
+export const registerUser = onRequest(async (req, res) => {
+  try {
+    const result = await authService.registerUser(req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(400).json({ error: "Failed to register user" });
+  }
 });
 
 // ============ FIRESTORE ENDPOINTS ============
