@@ -1,218 +1,287 @@
-# Firebase Basic 🚀
+# Firebase Basic
 
-Un proyecto educativo diseñado para aprender y practicar los servicios principales de **Firebase** en la plataforma Google Cloud. Este proyecto incluye ejemplos de Cloud Functions, Firestore, Authentication, Storage y otros servicios clave.
+Proyecto educativo para aprender Firebase paso a paso usando **Cloud Functions v2**, **Firestore**, **Cloud Storage** y la **Firebase Emulator Suite**.
 
-## 📋 Descripción
+El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya incluye una primera arquitectura con capa de servicios para separar los endpoints HTTP de la lógica de Firestore y Storage.
 
-Firebase Basic es un repositorio de aprendizaje progresivo que comienza con ejemplos simples de "Hola Mundo" y evoluciona hacia implementaciones más complejas:
+## Estado Actual
 
-- **Commit 1**: Hola mundo en Cloud Functions (onCall y onRequest)
-- **Commits siguientes**: CRUD, ejercicios, pruebas e integración de servicios
+- ✅ **Cloud Functions v2**: funciones `onCall` y `onRequest`.
+- ✅ **Firestore**: CRUD básico sobre la colección `items`.
+- ✅ **Cloud Storage**: subir, descargar, listar y borrar archivos.
+- ✅ **Firebase Admin SDK**: inicialización centralizada para Firestore y Storage.
+- ✅ **Emuladores**: configuración para Functions, Firestore, Auth, Storage y Emulator UI.
+- 🔜 **Authentication**: pendiente de implementar en flujos reales.
+- 🔜 **Reglas seguras**: actualmente hay reglas temporales abiertas para aprendizaje.
+- 🔜 **Tests automatizados**: pendiente.
 
-### Servicios de Firebase a Cubrir
+## Estructura del Proyecto
 
-- ✅ **Cloud Functions v2** - Funciones serverless (HTTP y Callable)
-- 🔜 **Firestore** - Base de datos NoSQL en tiempo real
-- 🔜 **Authentication** - Sistema de autenticación de usuarios
-- 🔜 **Storage** - Almacenamiento de archivos en la nube
-- 🔜 **Emuladores** - Desarrollo local con Firebase Emulator Suite
-
-## 🏗️ Estructura del Proyecto
-
-```
+```text
 firebase_basic/
-├── functions/                    # Cloud Functions
+├── functions/
 │   ├── src/
-│   │   └── index.ts             # Funciones principales (onCall, onRequest)
-│   ├── lib/                      # Código compilado (generado)
-│   ├── package.json             # Dependencias de funciones
-│   ├── tsconfig.json            # Configuración TypeScript
-│   └── .eslintrc.js             # Linter configuration
-│
-├── firestore.rules              # Reglas de seguridad Firestore
-├── firestore.indexes.json       # Índices de Firestore
-├── storage.rules                # Reglas de seguridad Storage
-├── firebase.json                # Configuración de Firebase
-├── .firebaserc                  # Proyecto Firebase predeterminado
-└── README.md                    # Este archivo
+│   │   ├── config/
+│   │   │   └── firebase.ts          # Inicialización de Firebase Admin SDK
+│   │   ├── services/
+│   │   │   ├── firestoreService.ts  # Operaciones CRUD para Firestore
+│   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
+│   │   │   └── index.ts             # Export centralizado de servicios
+│   │   └── index.ts                 # Cloud Functions expuestas
+│   ├── package.json                 # Scripts y dependencias de Functions
+│   ├── tsconfig.json                # Configuración TypeScript
+│   └── .eslintrc.js                 # Configuración ESLint
+├── firebase.json                    # Firebase, predeploy y emuladores
+├── firestore.rules                  # Reglas de seguridad Firestore
+├── firestore.indexes.json           # Índices de Firestore
+├── storage.rules                    # Reglas de seguridad Storage
+├── .firebaserc                      # Proyecto Firebase predeterminado
+├── .gitignore                       # Archivos ignorados por Git
+└── README.md
 ```
 
-## 🛠️ Requisitos Previos
+## Requisitos
 
-- **Node.js** 20.x o superior
-- **Firebase CLI** (`npm install -g firebase-tools`)
-- **Git** para control de versiones
-- Cuenta en **Google Cloud / Firebase** (para desplegar)
+- Node.js 20.x o superior.
+- Firebase CLI.
+- Git.
+- Cuenta de Firebase / Google Cloud para despliegues reales.
 
-## 📦 Instalación
+Instalar Firebase CLI globalmente:
 
-### 1. Clonar el repositorio
+```bash
+npm install -g firebase-tools
+```
+
+## Instalación
+
 ```bash
 git clone <repository-url>
-cd firebase_basic
-```
-
-### 2. Instalar dependencias de las funciones
-```bash
-cd functions
+cd firebase_basic/functions
 npm install
 ```
 
-### 3. Configurar Firebase (opcional para desarrollo local)
+Configurar acceso a Firebase si vas a usar un proyecto real:
+
 ```bash
 firebase login
-firebase use --add  # Seleccionar o crear proyecto
+firebase use --add
 ```
 
-## 🚀 Uso Local
+## Desarrollo Local
 
-### Ejecutar Cloud Functions en local
+Desde `functions/`, compilar y levantar el emulador de Functions:
+
 ```bash
 cd functions
 npm run serve
 ```
 
-Esto iniciará:
-- **Cloud Functions Emulator**: http://localhost:5001
-- **Firestore Emulator**: http://localhost:8080
-- **Auth Emulator**: http://localhost:9099
-- **Storage Emulator**: http://localhost:9199
-- **Firebase Emulator UI**: http://localhost:4000
+Desde la raíz del proyecto, también puedes levantar todos los emuladores configurados:
 
-### Otros comandos útiles
 ```bash
-# Compilar TypeScript
-npm run build
-
-# Compilar en modo watch
-npm run build:watch
-
-# Lint del código
-npm run lint
-
-# Desplegar funciones a producción
-npm run deploy
-
-# Ver logs de funciones
-npm run logs
-
-# Shell interactivo de funciones
-npm run shell
+firebase emulators:start
 ```
 
-## 📚 Plan de Aprendizaje
+Puertos configurados:
 
-### Fase 1: Cloud Functions (Actual)
-- ✅ Función `onCall` - Funciones invocables desde cliente
-- ✅ Función `onRequest` - Funciones HTTP endpoint
-- Lógica compartida y reutilizable
+- Cloud Functions Emulator: http://localhost:5001
+- Firestore Emulator: http://localhost:8080
+- Auth Emulator: http://localhost:9099
+- Storage Emulator: http://localhost:9199
+- Firebase Emulator UI: http://localhost:4000
 
-### Fase 2: Firestore (Próxima)
-- [ ] Crear colecciones y documentos
-- [ ] Operaciones CRUD básicas
-- [ ] Queries y filtros
-- [ ] Listeners en tiempo real
-- [ ] Transacciones
+## Scripts
 
-### Fase 3: Authentication
-- [ ] Registro de usuarios
-- [ ] Login/Logout
-- [ ] Gestión de sesiones
-- [ ] Autorización con reglas de seguridad
+Ejecutar dentro de `functions/`:
 
-### Fase 4: Storage
-- [ ] Subida de archivos
-- [ ] Descarga de archivos
-- [ ] Gestión de permisos
-- [ ] Integración con Firestore
-
-### Fase 5: Casos de Uso Avanzados
-- [ ] Triggers basados en eventos
-- [ ] Procesamiento de datos
-- [ ] Integración con servicios externos
-- [ ] Testing de funciones
-
-## 💡 Ejemplos Actuales
-
-### Función Callable (onCall)
-Invocable directamente desde aplicaciones cliente:
-```typescript
-// Acceso desde cliente:
-const result = await fnCall();
-// Retorna: { message: "Hola 🚀" }
-```
-
-### Función HTTP (onRequest)
-Endpoint HTTP tradicional:
 ```bash
-curl http://localhost:5001/guarderia-dev/southamerica-east1/fnHttp
-# Retorna: { "message": "Hola 🚀" }
+npm run build        # Compila TypeScript
+npm run build:watch  # Compila en modo watch
+npm run lint         # Ejecuta ESLint
+npm run serve        # Compila y levanta el emulador de Functions
+npm run shell        # Shell interactivo de Functions
+npm run deploy       # Despliega Cloud Functions
+npm run logs         # Muestra logs de Functions
 ```
 
-## 🔒 Seguridad
+## Funciones Disponibles
 
-### Reglas Actuales
-- **Firestore**: Acceso público temporalmente (válido hasta 21-05-2026)
-- **Storage**: Acceso público temporalmente (válido hasta 24-05-2026)
+### Hola Mundo
 
-⚠️ **Importante**: Antes de la expiración, debes implementar reglas de seguridad apropiadas según tu lógica de negocio.
+`helloCall`: función callable para invocar desde un cliente Firebase.
 
-Ejemplo de regla segura:
+`helloHttp`: endpoint HTTP tradicional.
+
+Ejemplo local:
+
+```bash
+curl http://localhost:5001/guarderia-dev/us-central1/helloHttp
 ```
+
+Respuesta:
+
+```json
+{
+  "message": "Hola 🚀"
+}
+```
+
+> Nota: las funciones no definen una región explícita en el código, por eso usan la región por defecto de Cloud Functions.
+
+### Firestore
+
+Los endpoints trabajan sobre la colección `items`.
+
+Crear item:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/us-central1/createItem \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Primer item","done":false}'
+```
+
+Listar items:
+
+```bash
+curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10&offset=0"
+```
+
+Obtener item por ID:
+
+```bash
+curl "http://localhost:5001/guarderia-dev/us-central1/getItemById?id=<item-id>"
+```
+
+Actualizar item:
+
+```bash
+curl -X PATCH "http://localhost:5001/guarderia-dev/us-central1/updateItem?id=<item-id>" \
+  -H "Content-Type: application/json" \
+  -d '{"done":true}'
+```
+
+Borrar item:
+
+```bash
+curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteItem?id=<item-id>"
+```
+
+### Cloud Storage
+
+Subir archivo:
+
+```bash
+curl -X POST "http://localhost:5001/guarderia-dev/us-central1/uploadFile?filename=hello.txt" \
+  -H "Content-Type: text/plain" \
+  --data "Hola Storage"
+```
+
+Listar archivos:
+
+```bash
+curl http://localhost:5001/guarderia-dev/us-central1/listFiles
+```
+
+Descargar archivo:
+
+```bash
+curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=hello.txt"
+```
+
+Borrar archivo:
+
+```bash
+curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoint?filename=hello.txt"
+```
+
+## Seguridad
+
+Las reglas actuales son temporales y abiertas para facilitar aprendizaje:
+
+- Firestore permite lectura y escritura hasta el **21 de mayo de 2026**.
+- Storage permite lectura y escritura hasta el **24 de mayo de 2026**.
+
+Antes de usar este proyecto en producción, reemplaza esas reglas por reglas basadas en autenticación y permisos reales. Un punto de partida mínimo sería:
+
+```text
 allow read, write: if request.auth != null;
 ```
 
-## 🧪 Testing
+## Plan de Aprendizaje
 
-Para probar las funciones localmente:
+### Fase 1: Cloud Functions
 
-1. Asegúrate de que el emulador esté corriendo
-2. Usa el Firebase Emulator UI en http://localhost:4000
-3. Invoca las funciones y verifica las respuestas
+- [x] Función callable con `onCall`.
+- [x] Endpoint HTTP con `onRequest`.
+- [x] Lógica compartida.
 
-### Próximamente: Tests Automatizados
-- Unit tests con Jest
-- Integration tests
-- E2E tests
+### Fase 2: Firestore
 
-## 🚢 Despliegue
+- [x] Inicializar Firebase Admin SDK.
+- [x] Crear documentos.
+- [x] Leer documentos por ID.
+- [x] Listar documentos con paginación básica.
+- [x] Actualizar documentos.
+- [x] Borrar documentos.
+- [ ] Agregar validación de datos.
+- [ ] Agregar filtros y queries más específicas.
+- [ ] Explorar transacciones.
 
-### Desplegar a producción
+### Fase 3: Cloud Storage
+
+- [x] Subir archivos.
+- [x] Descargar archivos.
+- [x] Listar archivos.
+- [x] Borrar archivos.
+- [ ] Validar tipos y tamaños de archivo.
+- [ ] Integrar metadata de archivos con Firestore.
+
+### Fase 4: Authentication
+
+- [ ] Registro de usuarios.
+- [ ] Login/logout.
+- [ ] Protección de endpoints.
+- [ ] Reglas de Firestore y Storage basadas en `request.auth`.
+
+### Fase 5: Calidad y Casos Avanzados
+
+- [ ] Tests unitarios.
+- [ ] Tests de integración con emuladores.
+- [ ] Triggers basados en eventos.
+- [ ] Procesamiento de datos.
+- [ ] Integración con servicios externos.
+
+## Despliegue
+
+Desde `functions/`:
+
 ```bash
-cd functions
 npm run deploy
 ```
 
-### Pre-despliegue automático
-El archivo `firebase.json` ejecuta automáticamente:
-1. Lint (`npm run lint`)
-2. Build (`npm run build`)
+El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
 
-Asegúrate de que ambos pasen antes de desplegar.
+1. `npm run lint`
+2. `npm run build`
 
-## 📖 Documentación Útil
+## Notas del Proyecto
+
+- Proyecto Firebase predeterminado: `guarderia-dev`.
+- Firestore configurado en `southamerica-east1`.
+- Cloud Functions usa la región por defecto mientras no se configure otra en el código.
+- Runtime de Functions: Node.js 20.
+- Lenguaje: TypeScript.
+
+## Documentación Útil
 
 - [Firebase Documentation](https://firebase.google.com/docs)
-- [Cloud Functions v2 Guide](https://firebase.google.com/docs/functions)
-- [Firestore Guide](https://firebase.google.com/docs/firestore)
+- [Cloud Functions v2](https://firebase.google.com/docs/functions)
+- [Firestore](https://firebase.google.com/docs/firestore)
+- [Cloud Storage for Firebase](https://firebase.google.com/docs/storage)
 - [Firebase Security Rules](https://firebase.google.com/docs/rules)
-- [Firebase CLI Reference](https://firebase.google.com/docs/cli)
-
-## 🤝 Contribuciones
-
-Este es un proyecto educativo. Se aceptan sugerencias y mejoras a través de issues y pull requests.
-
-## 📝 Notas del Proyecto
-
-- **Región de Firestore**: South America East 1 (southamerica-east1)
-- **Proyecto Firebase**: guarderia-dev
-- **Node Version**: 20.x
-- **TypeScript**: v6.x
-
-## 📄 Licencia
-
-Este proyecto es de código abierto y está disponible bajo una licencia MIT.
+- [Firebase CLI](https://firebase.google.com/docs/cli)
 
 ---
 
-**Creado para aprender Firebase** 🎓 - Iniciando con Cloud Functions v2 y evolucionando hacia un stack completo.
+Creado para aprender Firebase de forma progresiva, empezando por Cloud Functions y avanzando hacia un backend serverless más completo.
