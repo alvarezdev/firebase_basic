@@ -152,18 +152,44 @@ Respuesta:
 }
 ```
 
-Login y logout normalmente se hacen desde el SDK cliente de Firebase Auth:
+Login normalmente se hace desde el SDK cliente de Firebase Auth:
 
 ```javascript
-import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 const auth = getAuth();
+const userCredential = await signInWithEmailAndPassword(auth, email, password);
+const token = await userCredential.user.getIdToken();
+```
 
-await signInWithEmailAndPassword(auth, email, password);
+Validar el usuario autenticado desde Cloud Functions:
+
+```bash
+TOKEN="<firebase-id-token>"
+
+curl http://localhost:5001/guarderia-dev/us-central1/getCurrentUser \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Logout desde el cliente:
+
+```javascript
+import { getAuth, signOut } from "firebase/auth";
+
+const auth = getAuth();
 await signOut(auth);
 ```
 
-Después del login, el cliente puede pedir un ID token con `auth.currentUser.getIdToken()`. Ese token será el que usaremos más adelante para proteger los endpoints de Firestore y Storage.
+Logout desde Cloud Functions revocando refresh tokens del usuario autenticado:
+
+```bash
+TOKEN="<firebase-id-token>"
+
+curl -X POST http://localhost:5001/guarderia-dev/us-central1/logoutUser \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Después del login, el ID token será el que usaremos más adelante para proteger los endpoints de Firestore y Storage.
 
 ### Firestore
 
@@ -276,7 +302,9 @@ allow read, write: if request.auth != null;
 ### Fase 4: Authentication
 
 - [x] Registro básico de usuarios.
-- [ ] Login/logout desde una app cliente.
+- [x] Login desde una app cliente.
+- [x] Obtener usuario actual con ID token.
+- [x] Logout desde cliente y revocación de refresh tokens desde backend.
 - [ ] Protección de endpoints.
 - [ ] Reglas de Firestore y Storage basadas en `request.auth`.
 

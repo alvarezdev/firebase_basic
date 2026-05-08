@@ -39,6 +39,30 @@ export const registerUser = onRequest(async (req, res) => {
   }
 });
 
+/**
+ * CURRENT USER - Get authenticated user profile from ID token
+ */
+export const getCurrentUser = onRequest(async (req, res) => {
+  try {
+    const result = await authService.getCurrentUser(req.get("authorization"));
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({ error: "Authentication required" });
+  }
+});
+
+/**
+ * LOGOUT - Revoke refresh tokens for authenticated user
+ */
+export const logoutUser = onRequest(async (req, res) => {
+  try {
+    const result = await authService.logoutUser(req.get("authorization"));
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({ error: "Authentication required" });
+  }
+});
+
 // ============ FIRESTORE ENDPOINTS ============
 
 /**
