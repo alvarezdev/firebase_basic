@@ -1,20 +1,35 @@
 import {bucket} from "../config/firebase";
 
 /**
+ * Build a user-owned Cloud Storage path.
+ *
+ * @param {string} ownerId Authenticated user ID.
+ * @param {string} filename File name provided by the client.
+ * @return {string} Storage object path scoped to the user.
+ */
+export function getUserFilePath(ownerId: string, filename: string) {
+  const sanitizedFilename = filename.replace(/^\/+/, "");
+  return `users/${ownerId}/${sanitizedFilename}`;
+}
+
+/**
  * UPLOAD - Upload a file to Cloud Storage
  *
  * @param {string} filename Name of the file in Cloud Storage.
  * @param {Buffer | string} fileData File content to save.
  * @param {string | undefined} contentType File MIME type.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object>} Uploaded file metadata.
  */
 export async function uploadFile(
   filename: string,
   fileData: Buffer | string,
-  contentType: string | undefined
+  contentType: string | undefined,
+  ownerId: string
 ) {
   // Get reference to the file in Cloud Storage
-  const file = bucket.file(filename);
+  const filePath = getUserFilePath(ownerId, filename);
+  const file = bucket.file(filePath);
 
   // Upload file data
   await file.save(fileData, {
@@ -29,10 +44,11 @@ export async function uploadFile(
   return {
     message: "File uploaded successfully",
     filename: filename,
+    path: filePath,
     size: metadata.size,
     timeCreated: metadata.timeCreated,
     contentType: metadata.contentType,
-    path: `gs://${bucket.name}/${filename}`,
+    storageUri: `gs://${bucket.name}/${filePath}`,
   };
 }
 
@@ -40,10 +56,12 @@ export async function uploadFile(
  * DOWNLOAD - Download a file from Cloud Storage
  *
  * @param {string} filename Name of the file in Cloud Storage.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object | null>} File data and metadata, or null.
  */
-export async function downloadFile(filename: string) {
-  const file = bucket.file(filename);
+export async function downloadFile(filename: string, ownerId: string) {
+  const filePath = getUserFilePath(ownerId, filename);
+  const file = bucket.file(filePath);
 
   // Check if file exists
   const [exists] = await file.exists();
@@ -60,6 +78,7 @@ export async function downloadFile(filename: string) {
 
   return {
     filename: filename,
+    path: filePath,
     size: metadata.size,
     contentType: (metadata.contentType as string) || "application/octet-stream",
     data: fileData,
@@ -68,9 +87,14 @@ export async function downloadFile(filename: string) {
 
 /**
  * LIST - List all files in Cloud Storage
+ *
+ * @param {string} ownerId Authenticated user ID.
+ * @return {Promise<object>} Files owned by the authenticated user.
  */
-export async function listFiles() {
-  const [files] = await bucket.getFiles();
+export async function listFiles(ownerId: string) {
+  const [files] = await bucket.getFiles({
+    prefix: `users/${ownerId}/`,
+  });
 
   return {
     count: files.length,
@@ -87,10 +111,12 @@ export async function listFiles() {
  * DELETE - Delete a file from Cloud Storage
  *
  * @param {string} filename Name of the file in Cloud Storage.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object | null>} Delete confirmation, or null if missing.
  */
-export async function deleteFile(filename: string) {
-  const file = bucket.file(filename);
+export async function deleteFile(filename: string, ownerId: string) {
+  const filePath = getUserFilePath(ownerId, filename);
+  const file = bucket.file(filePath);
 
   // Check if file exists
   const [exists] = await file.exists();
@@ -105,5 +131,6 @@ export async function deleteFile(filename: string) {
   return {
     message: "File deleted successfully",
     filename: filename,
+    path: filePath,
   };
 }

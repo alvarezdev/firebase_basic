@@ -13,7 +13,8 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Emuladores**: configuración para Functions, Firestore, Auth, Storage y Emulator UI.
 - ✅ **Authentication**: registro, validación de ID tokens y logout por revocación de refresh tokens.
 - ✅ **Reglas seguras básicas**: Firestore y Storage requieren usuario autenticado.
-- 🔜 **Autorización por propietario o rol**: pendiente.
+- ✅ **Autorización por propietario**: cada usuario accede solo a sus items y archivos.
+- 🔜 **Autorización por rol**: pendiente.
 - 🔜 **Tests automatizados**: pendiente.
 
 ## Estructura del Proyecto
@@ -171,6 +172,8 @@ Después del login, el ID token se envía en cada endpoint protegido con `Author
 
 Los endpoints trabajan sobre la colección `items`.
 
+Cada item guarda automáticamente `ownerId` con el `uid` del usuario autenticado. Los listados y operaciones por ID solo devuelven documentos del propietario.
+
 Crear item:
 
 ```bash
@@ -214,6 +217,8 @@ curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteItem?id=<i
 
 ### Cloud Storage
 
+Cada archivo se guarda bajo la ruta `users/{uid}/{filename}`. Los endpoints de Storage solo operan sobre archivos del usuario autenticado.
+
 Subir archivo:
 
 ```bash
@@ -246,15 +251,23 @@ curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoi
 
 ## Seguridad
 
-Las reglas actuales requieren autenticación:
+Las reglas actuales requieren autenticación y propiedad.
+
+Firestore permite crear items solo si `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario.
 
 ```text
-allow read, write: if request.auth != null;
+request.auth != null && resource.data.ownerId == request.auth.uid
+```
+
+Storage permite leer y escribir únicamente bajo la carpeta del usuario:
+
+```text
+users/{request.auth.uid}/{filename}
 ```
 
 Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`.
 
-Este es un primer nivel de seguridad. Para producción, el siguiente paso es agregar autorización por propiedad o rol, por ejemplo validar que cada usuario solo pueda leer o modificar sus propios documentos y archivos.
+Este es un segundo nivel de seguridad: el usuario debe estar autenticado y ser propietario del recurso. El siguiente paso es agregar autorización por rol.
 
 ## Plan de Aprendizaje
 
@@ -295,7 +308,9 @@ Este es un primer nivel de seguridad. Para producción, el siguiente paso es agr
 - [x] Protección de endpoints CRUD.
 - [x] Protección de endpoints de Storage.
 - [x] Reglas de Firestore y Storage basadas en `request.auth`.
-- [ ] Autorización por propietario o rol.
+- [x] Autorización por propietario en Firestore.
+- [x] Autorización por propietario en Storage.
+- [ ] Autorización por rol.
 
 ### Fase 5: Calidad y Casos Avanzados
 

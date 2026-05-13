@@ -6,13 +6,21 @@ const itemsCollection = db.collection("items");
  * CREATE - Add a new item to Firestore
  *
  * @param {any} itemData Data to store in the item document.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object>} Created item with generated Firestore ID.
  */
-export async function createItem(itemData: Record<string, unknown>) {
-  const docRef = await itemsCollection.add(itemData);
+export async function createItem(
+  itemData: Record<string, unknown>,
+  ownerId: string
+) {
+  const data = {
+    ...itemData,
+    ownerId,
+  };
+  const docRef = await itemsCollection.add(data);
   return {
     id: docRef.id,
-    ...itemData,
+    ...data,
   };
 }
 
@@ -21,15 +29,22 @@ export async function createItem(itemData: Record<string, unknown>) {
  *
  * @param {number} limit Maximum number of items to return.
  * @param {number} offset Number of items to skip.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object>} Items and pagination metadata.
  */
-export async function getAllItems(limit: number, offset: number) {
+export async function getAllItems(
+  limit: number,
+  offset: number,
+  ownerId: string
+) {
+  const ownerItemsQuery = itemsCollection.where("ownerId", "==", ownerId);
+
   // Get total count of items
-  const totalSnapshot = await itemsCollection.count().get();
+  const totalSnapshot = await ownerItemsQuery.count().get();
   const total = totalSnapshot.data().count;
 
   // Get paginated items
-  const snapshot = await itemsCollection
+  const snapshot = await ownerItemsQuery
     .limit(limit + offset)
     .get();
 
@@ -56,18 +71,25 @@ export async function getAllItems(limit: number, offset: number) {
  * READ - Get a single item by ID
  *
  * @param {string} itemId Firestore document ID.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object | null>} Item data, or null if it does not exist.
  */
-export async function getItemById(itemId: string) {
+export async function getItemById(itemId: string, ownerId: string) {
   const doc = await itemsCollection.doc(itemId).get();
 
   if (!doc.exists) {
     return null;
   }
 
+  const itemData = doc.data();
+
+  if (itemData?.ownerId !== ownerId) {
+    return null;
+  }
+
   return {
     id: doc.id,
-    ...doc.data(),
+    ...itemData,
   };
 }
 
@@ -76,11 +98,13 @@ export async function getItemById(itemId: string) {
  *
  * @param {string} itemId Firestore document ID.
  * @param {any} updateData Partial data to update.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object | null>} Updated item, or null if it does not exist.
  */
 export async function updateItem(
   itemId: string,
-  updateData: Record<string, unknown>
+  updateData: Record<string, unknown>,
+  ownerId: string
 ) {
   // Check if document exists
   const doc = await itemsCollection.doc(itemId).get();
@@ -88,6 +112,14 @@ export async function updateItem(
   if (!doc.exists) {
     return null;
   }
+
+  const itemData = doc.data();
+
+  if (itemData?.ownerId !== ownerId) {
+    return null;
+  }
+
+  delete updateData.ownerId;
 
   // Update the document
   await itemsCollection.doc(itemId).update(updateData);
@@ -105,13 +137,20 @@ export async function updateItem(
  * DELETE - Delete an item
  *
  * @param {string} itemId Firestore document ID.
+ * @param {string} ownerId Authenticated user ID.
  * @return {Promise<object | null>} Delete confirmation, or null if missing.
  */
-export async function deleteItem(itemId: string) {
+export async function deleteItem(itemId: string, ownerId: string) {
   // Check if document exists
   const doc = await itemsCollection.doc(itemId).get();
 
   if (!doc.exists) {
+    return null;
+  }
+
+  const itemData = doc.data();
+
+  if (itemData?.ownerId !== ownerId) {
     return null;
   }
 
