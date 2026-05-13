@@ -1,13 +1,33 @@
-import { onCall } from "firebase-functions/v2/https";
-import { onRequest } from "firebase-functions/v2/https";
-import { authService, firestoreService, storageService } from "./services";
+import type {DecodedIdToken} from "firebase-admin/auth";
+import type {Response} from "express";
+import {onCall, onRequest, type Request} from "firebase-functions/v2/https";
+import {authService, firestoreService, storageService} from "./services";
+
+/**
+ * Require a valid Firebase Auth ID token for HTTP endpoints.
+ *
+ * @param {Request} req HTTP request.
+ * @param {Response} res HTTP response.
+ * @return {Promise<DecodedIdToken | null>} Authenticated user claims.
+ */
+async function requireAuth(
+  req: Request,
+  res: Response
+): Promise<DecodedIdToken | null> {
+  try {
+    return await authService.verifyIdToken(req.get("authorization"));
+  } catch (error) {
+    res.status(401).json({error: "Authentication required"});
+    return null;
+  }
+}
 
 /**
  * Shared business logic
  * Returns a greeting message
  */
 async function getHelloMessage() {
-  return { message: "Hola 🚀" };
+  return {message: "Hola 🚀"};
 }
 
 /**
@@ -35,7 +55,7 @@ export const registerUser = onRequest(async (req, res) => {
     const result = await authService.registerUser(req.body);
     res.status(201).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to register user" });
+    res.status(400).json({error: "Failed to register user"});
   }
 });
 
@@ -47,7 +67,7 @@ export const getCurrentUser = onRequest(async (req, res) => {
     const result = await authService.getCurrentUser(req.get("authorization"));
     res.status(200).json(result);
   } catch (error) {
-    res.status(401).json({ error: "Authentication required" });
+    res.status(401).json({error: "Authentication required"});
   }
 });
 
@@ -59,7 +79,7 @@ export const logoutUser = onRequest(async (req, res) => {
     const result = await authService.logoutUser(req.get("authorization"));
     res.status(200).json(result);
   } catch (error) {
-    res.status(401).json({ error: "Authentication required" });
+    res.status(401).json({error: "Authentication required"});
   }
 });
 
@@ -69,11 +89,17 @@ export const logoutUser = onRequest(async (req, res) => {
  * CREATE - Add a new item to Firestore
  */
 export const createItem = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const result = await firestoreService.createItem(req.body);
     res.status(201).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to create item" });
+    res.status(400).json({error: "Failed to create item"});
   }
 });
 
@@ -81,6 +107,12 @@ export const createItem = onRequest(async (req, res) => {
  * READ - Get all items with pagination support
  */
 export const getAllItems = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     let limit = parseInt(req.query.limit as string) || 10;
     let offset = parseInt(req.query.offset as string) || 0;
@@ -96,7 +128,7 @@ export const getAllItems = onRequest(async (req, res) => {
     const result = await firestoreService.getAllItems(limit, offset);
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to fetch items" });
+    res.status(400).json({error: "Failed to fetch items"});
   }
 });
 
@@ -104,24 +136,30 @@ export const getAllItems = onRequest(async (req, res) => {
  * READ - Get a single item by ID
  */
 export const getItemById = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const itemId = req.query.id as string;
 
     if (!itemId) {
-      res.status(400).json({ error: "Item ID is required" });
+      res.status(400).json({error: "Item ID is required"});
       return;
     }
 
     const result = await firestoreService.getItemById(itemId);
 
     if (!result) {
-      res.status(404).json({ error: "Item not found" });
+      res.status(404).json({error: "Item not found"});
       return;
     }
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to fetch item" });
+    res.status(400).json({error: "Failed to fetch item"});
   }
 });
 
@@ -129,30 +167,36 @@ export const getItemById = onRequest(async (req, res) => {
  * UPDATE - Update an existing item
  */
 export const updateItem = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const itemId = req.query.id as string;
     const updateData = req.body;
 
     if (!itemId) {
-      res.status(400).json({ error: "Item ID is required" });
+      res.status(400).json({error: "Item ID is required"});
       return;
     }
 
     if (!updateData || Object.keys(updateData).length === 0) {
-      res.status(400).json({ error: "Update data is required" });
+      res.status(400).json({error: "Update data is required"});
       return;
     }
 
     const result = await firestoreService.updateItem(itemId, updateData);
 
     if (!result) {
-      res.status(404).json({ error: "Item not found" });
+      res.status(404).json({error: "Item not found"});
       return;
     }
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to update item" });
+    res.status(400).json({error: "Failed to update item"});
   }
 });
 
@@ -160,24 +204,30 @@ export const updateItem = onRequest(async (req, res) => {
  * DELETE - Delete an item
  */
 export const deleteItem = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const itemId = req.query.id as string;
 
     if (!itemId) {
-      res.status(400).json({ error: "Item ID is required" });
+      res.status(400).json({error: "Item ID is required"});
       return;
     }
 
     const result = await firestoreService.deleteItem(itemId);
 
     if (!result) {
-      res.status(404).json({ error: "Item not found" });
+      res.status(404).json({error: "Item not found"});
       return;
     }
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to delete item" });
+    res.status(400).json({error: "Failed to delete item"});
   }
 });
 
@@ -187,24 +237,36 @@ export const deleteItem = onRequest(async (req, res) => {
  * UPLOAD - Upload a file to Cloud Storage
  */
 export const uploadFile = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     let filename = req.query.filename as string;
     const contentType = req.get("content-type");
 
     // Generate filename if not provided
     if (!filename) {
-      filename = `file-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      filename = `file-${Date.now()}-${
+        Math.random().toString(36).substring(7)
+      }`;
     }
 
     if (!req.body || req.body.length === 0) {
-      res.status(400).json({ error: "File data is required" });
+      res.status(400).json({error: "File data is required"});
       return;
     }
 
-    const result = await storageService.uploadFile(filename, req.body, contentType);
+    const result = await storageService.uploadFile(
+      filename,
+      req.body,
+      contentType
+    );
     res.status(201).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to upload file" });
+    res.status(400).json({error: "Failed to upload file"});
   }
 });
 
@@ -212,26 +274,35 @@ export const uploadFile = onRequest(async (req, res) => {
  * DOWNLOAD - Download a file from Cloud Storage
  */
 export const downloadFile = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const filename = req.query.filename as string;
 
     if (!filename) {
-      res.status(400).json({ error: "Filename is required" });
+      res.status(400).json({error: "Filename is required"});
       return;
     }
 
     const result = await storageService.downloadFile(filename);
 
     if (!result) {
-      res.status(404).json({ error: "File not found" });
+      res.status(404).json({error: "File not found"});
       return;
     }
 
     res.setHeader("Content-Type", result.contentType);
-    res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${result.filename}"`
+    );
     res.send(result.data);
   } catch (error) {
-    res.status(400).json({ error: "Failed to download file" });
+    res.status(400).json({error: "Failed to download file"});
   }
 });
 
@@ -239,11 +310,17 @@ export const downloadFile = onRequest(async (req, res) => {
  * LIST - List all files in Cloud Storage
  */
 export const listFiles = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const result = await storageService.listFiles();
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to list files" });
+    res.status(400).json({error: "Failed to list files"});
   }
 });
 
@@ -251,23 +328,29 @@ export const listFiles = onRequest(async (req, res) => {
  * DELETE - Delete a file from Cloud Storage
  */
 export const deleteFileEndpoint = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const filename = req.query.filename as string;
 
     if (!filename) {
-      res.status(400).json({ error: "Filename is required" });
+      res.status(400).json({error: "Filename is required"});
       return;
     }
 
     const result = await storageService.deleteFile(filename);
 
     if (!result) {
-      res.status(404).json({ error: "File not found" });
+      res.status(404).json({error: "File not found"});
       return;
     }
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ error: "Failed to delete file" });
+    res.status(400).json({error: "Failed to delete file"});
   }
 });

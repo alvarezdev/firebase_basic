@@ -2,17 +2,18 @@
 
 Proyecto educativo para aprender Firebase paso a paso usando **Cloud Functions v2**, **Firestore**, **Cloud Storage** y la **Firebase Emulator Suite**.
 
-El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya incluye una primera arquitectura con capa de servicios para separar los endpoints HTTP de la lógica de Firestore y Storage.
+El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya incluye una primera arquitectura con capa de servicios para separar los endpoints HTTP de la lógica de Firestore, Storage y Authentication.
 
 ## Estado Actual
 
 - ✅ **Cloud Functions v2**: funciones `onCall` y `onRequest`.
 - ✅ **Firestore**: CRUD básico sobre la colección `items`.
 - ✅ **Cloud Storage**: subir, descargar, listar y borrar archivos.
-- ✅ **Firebase Admin SDK**: inicialización centralizada para Firestore y Storage.
+- ✅ **Firebase Admin SDK**: inicialización centralizada para Auth, Firestore y Storage.
 - ✅ **Emuladores**: configuración para Functions, Firestore, Auth, Storage y Emulator UI.
-- ✅ **Authentication**: registro básico de usuarios con Firebase Auth.
-- 🔜 **Reglas seguras**: actualmente hay reglas temporales abiertas para aprendizaje.
+- ✅ **Authentication**: registro, validación de ID tokens y logout por revocación de refresh tokens.
+- ✅ **Reglas seguras básicas**: Firestore y Storage requieren usuario autenticado.
+- 🔜 **Autorización por propietario o rol**: pendiente.
 - 🔜 **Tests automatizados**: pendiente.
 
 ## Estructura del Proyecto
@@ -71,7 +72,7 @@ firebase use --add
 
 ## Desarrollo Local
 
-Desde `functions/`, compilar y levantar el emulador de Functions:
+Desde `functions/`, compilar y levantar los emuladores necesarios para las funciones protegidas:
 
 ```bash
 cd functions
@@ -100,7 +101,7 @@ Ejecutar dentro de `functions/`:
 npm run build        # Compila TypeScript
 npm run build:watch  # Compila en modo watch
 npm run lint         # Ejecuta ESLint
-npm run serve        # Compila y levanta el emulador de Functions
+npm run serve        # Compila y levanta Functions, Auth, Firestore y Storage
 npm run shell        # Shell interactivo de Functions
 npm run deploy       # Despliega Cloud Functions
 npm run logs         # Muestra logs de Functions
@@ -140,26 +141,12 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
   -d '{"email":"demo@example.com","password":"secret123","displayName":"Demo User"}'
 ```
 
-Respuesta:
+Login con el Auth Emulator:
 
-```json
-{
-  "uid": "<firebase-auth-uid>",
-  "email": "demo@example.com",
-  "displayName": "Demo User",
-  "emailVerified": false,
-  "disabled": false
-}
-```
-
-Login normalmente se hace desde el SDK cliente de Firebase Auth:
-
-```javascript
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-
-const auth = getAuth();
-const userCredential = await signInWithEmailAndPassword(auth, email, password);
-const token = await userCredential.user.getIdToken();
+```bash
+curl -X POST "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@example.com","password":"secret123","returnSecureToken":true}'
 ```
 
 Validar el usuario autenticado desde Cloud Functions:
@@ -171,25 +158,14 @@ curl http://localhost:5001/guarderia-dev/us-central1/getCurrentUser \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Logout desde el cliente:
-
-```javascript
-import { getAuth, signOut } from "firebase/auth";
-
-const auth = getAuth();
-await signOut(auth);
-```
-
 Logout desde Cloud Functions revocando refresh tokens del usuario autenticado:
 
 ```bash
-TOKEN="<firebase-id-token>"
-
 curl -X POST http://localhost:5001/guarderia-dev/us-central1/logoutUser \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Después del login, el ID token será el que usaremos más adelante para proteger los endpoints de Firestore y Storage.
+Después del login, el ID token se envía en cada endpoint protegido con `Authorization: Bearer <ID_TOKEN>`.
 
 ### Firestore
 
@@ -198,7 +174,10 @@ Los endpoints trabajan sobre la colección `items`.
 Crear item:
 
 ```bash
+TOKEN="<firebase-id-token>"
+
 curl -X POST http://localhost:5001/guarderia-dev/us-central1/createItem \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Primer item","done":false}'
 ```
@@ -206,19 +185,22 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/createItem \
 Listar items:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10&offset=0"
+curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10&offset=0" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Obtener item por ID:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getItemById?id=<item-id>"
+curl "http://localhost:5001/guarderia-dev/us-central1/getItemById?id=<item-id>" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Actualizar item:
 
 ```bash
 curl -X PATCH "http://localhost:5001/guarderia-dev/us-central1/updateItem?id=<item-id>" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"done":true}'
 ```
@@ -226,7 +208,8 @@ curl -X PATCH "http://localhost:5001/guarderia-dev/us-central1/updateItem?id=<it
 Borrar item:
 
 ```bash
-curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteItem?id=<item-id>"
+curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteItem?id=<item-id>" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Cloud Storage
@@ -235,6 +218,7 @@ Subir archivo:
 
 ```bash
 curl -X POST "http://localhost:5001/guarderia-dev/us-central1/uploadFile?filename=hello.txt" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: text/plain" \
   --data "Hola Storage"
 ```
@@ -242,33 +226,35 @@ curl -X POST "http://localhost:5001/guarderia-dev/us-central1/uploadFile?filenam
 Listar archivos:
 
 ```bash
-curl http://localhost:5001/guarderia-dev/us-central1/listFiles
+curl http://localhost:5001/guarderia-dev/us-central1/listFiles \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Descargar archivo:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=hello.txt"
+curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=hello.txt" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Borrar archivo:
 
 ```bash
-curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoint?filename=hello.txt"
+curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoint?filename=hello.txt" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Seguridad
 
-Las reglas actuales son temporales y abiertas para facilitar aprendizaje:
-
-- Firestore permite lectura y escritura hasta el **21 de mayo de 2026**.
-- Storage permite lectura y escritura hasta el **24 de mayo de 2026**.
-
-Antes de usar este proyecto en producción, reemplaza esas reglas por reglas basadas en autenticación y permisos reales. Un punto de partida mínimo sería:
+Las reglas actuales requieren autenticación:
 
 ```text
 allow read, write: if request.auth != null;
 ```
+
+Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`.
+
+Este es un primer nivel de seguridad. Para producción, el siguiente paso es agregar autorización por propiedad o rol, por ejemplo validar que cada usuario solo pueda leer o modificar sus propios documentos y archivos.
 
 ## Plan de Aprendizaje
 
@@ -302,11 +288,14 @@ allow read, write: if request.auth != null;
 ### Fase 4: Authentication
 
 - [x] Registro básico de usuarios.
-- [x] Login desde una app cliente.
+- [x] Login con Auth Emulator / Firebase Auth REST API.
 - [x] Obtener usuario actual con ID token.
 - [x] Logout desde cliente y revocación de refresh tokens desde backend.
-- [ ] Protección de endpoints.
-- [ ] Reglas de Firestore y Storage basadas en `request.auth`.
+- [x] Verificación de Firebase ID tokens en Cloud Functions HTTP.
+- [x] Protección de endpoints CRUD.
+- [x] Protección de endpoints de Storage.
+- [x] Reglas de Firestore y Storage basadas en `request.auth`.
+- [ ] Autorización por propietario o rol.
 
 ### Fase 5: Calidad y Casos Avanzados
 

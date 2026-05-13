@@ -1,5 +1,5 @@
-import { DecodedIdToken } from "firebase-admin/auth";
-import { auth } from "../config/firebase";
+import {DecodedIdToken} from "firebase-admin/auth";
+import {auth} from "../config/firebase";
 
 interface RegisterUserData {
   email?: string;
@@ -9,9 +9,12 @@ interface RegisterUserData {
 
 /**
  * AUTH - Register a new Firebase Auth user
+ *
+ * @param {RegisterUserData} userData User registration data.
+ * @return {Promise<object>} Created user metadata.
  */
 export async function registerUser(userData: RegisterUserData) {
-  const { email, password, displayName } = userData;
+  const {email, password, displayName} = userData;
 
   if (!email || !password) {
     throw new Error("Email and password are required");
@@ -34,6 +37,9 @@ export async function registerUser(userData: RegisterUserData) {
 
 /**
  * AUTH - Verify a Firebase ID token from the Authorization header
+ *
+ * @param {string | undefined} authorizationHeader Authorization header value.
+ * @return {Promise<DecodedIdToken>} Decoded Firebase ID token.
  */
 export async function verifyIdToken(
   authorizationHeader: string | undefined
@@ -53,6 +59,9 @@ export async function verifyIdToken(
 
 /**
  * AUTH - Get the current authenticated user from an ID token
+ *
+ * @param {string | undefined} authorizationHeader Authorization header value.
+ * @return {Promise<object>} Authenticated user metadata.
  */
 export async function getCurrentUser(authorizationHeader: string | undefined) {
   const decodedToken = await verifyIdToken(authorizationHeader);
@@ -69,6 +78,9 @@ export async function getCurrentUser(authorizationHeader: string | undefined) {
 
 /**
  * AUTH - Revoke refresh tokens for the current authenticated user
+ *
+ * @param {string | undefined} authorizationHeader Authorization header value.
+ * @return {Promise<object>} Logout confirmation.
  */
 export async function logoutUser(authorizationHeader: string | undefined) {
   const decodedToken = await verifyIdToken(authorizationHeader);

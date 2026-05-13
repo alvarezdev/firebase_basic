@@ -1,9 +1,18 @@
-import { bucket } from "../config/firebase";
+import {bucket} from "../config/firebase";
 
 /**
  * UPLOAD - Upload a file to Cloud Storage
+ *
+ * @param {string} filename Name of the file in Cloud Storage.
+ * @param {Buffer | string} fileData File content to save.
+ * @param {string | undefined} contentType File MIME type.
+ * @return {Promise<object>} Uploaded file metadata.
  */
-export async function uploadFile(filename: string, fileData: any, contentType: string | undefined) {
+export async function uploadFile(
+  filename: string,
+  fileData: Buffer | string,
+  contentType: string | undefined
+) {
   // Get reference to the file in Cloud Storage
   const file = bucket.file(filename);
 
@@ -29,6 +38,9 @@ export async function uploadFile(filename: string, fileData: any, contentType: s
 
 /**
  * DOWNLOAD - Download a file from Cloud Storage
+ *
+ * @param {string} filename Name of the file in Cloud Storage.
+ * @return {Promise<object | null>} File data and metadata, or null.
  */
 export async function downloadFile(filename: string) {
   const file = bucket.file(filename);
@@ -73,6 +85,9 @@ export async function listFiles() {
 
 /**
  * DELETE - Delete a file from Cloud Storage
+ *
+ * @param {string} filename Name of the file in Cloud Storage.
+ * @return {Promise<object | null>} Delete confirmation, or null if missing.
  */
 export async function deleteFile(filename: string) {
   const file = bucket.file(filename);
