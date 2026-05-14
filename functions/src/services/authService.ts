@@ -7,6 +7,13 @@ interface RegisterUserData {
   displayName?: string;
 }
 
+type UserRole = "user" | "admin";
+
+interface SetUserRoleData {
+  uid?: string;
+  role?: UserRole;
+}
+
 /**
  * AUTH - Register a new Firebase Auth user
  *
@@ -73,6 +80,53 @@ export async function getCurrentUser(authorizationHeader: string | undefined) {
     displayName: userRecord.displayName || null,
     emailVerified: userRecord.emailVerified,
     disabled: userRecord.disabled,
+    role: decodedToken.role || null,
+  };
+}
+
+/**
+ * AUTH - Set a basic role custom claim for a Firebase Auth user
+ *
+ * @param {SetUserRoleData} roleData User ID and role to assign.
+ * @return {Promise<object>} Updated user role metadata.
+ */
+export async function setUserRole(roleData: SetUserRoleData) {
+  const {uid, role} = roleData;
+
+  if (!uid || !role) {
+    throw new Error("UID and role are required");
+  }
+
+  if (role !== "user" && role !== "admin") {
+    throw new Error("Role must be user or admin");
+  }
+
+  await auth.setCustomUserClaims(uid, {role});
+
+  return {
+    message: "User role updated successfully",
+    uid,
+    role,
+  };
+}
+
+/**
+ * AUTH - Get a Firebase Auth user's assigned role
+ *
+ * @param {string} uid Firebase Auth user ID.
+ * @return {Promise<object>} User role metadata.
+ */
+export async function getUserRole(uid: string) {
+  if (!uid) {
+    throw new Error("UID is required");
+  }
+
+  const userRecord = await auth.getUser(uid);
+
+  return {
+    uid: userRecord.uid,
+    email: userRecord.email,
+    role: userRecord.customClaims?.role || null,
   };
 }
 

@@ -14,7 +14,8 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Authentication**: registro, validación de ID tokens y logout por revocación de refresh tokens.
 - ✅ **Reglas seguras básicas**: Firestore y Storage requieren usuario autenticado.
 - ✅ **Autorización por propietario**: cada usuario accede solo a sus items y archivos.
-- 🔜 **Autorización por rol**: pendiente.
+- ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
+- 🔜 **Uso de roles en recursos**: pendiente.
 - 🔜 **Tests automatizados**: pendiente.
 
 ## Estructura del Proyecto
@@ -168,6 +169,22 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/logoutUser \
 
 Después del login, el ID token se envía en cada endpoint protegido con `Authorization: Bearer <ID_TOKEN>`.
 
+Asignar rol básico a un usuario:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/us-central1/setUserRole \
+  -H "Content-Type: application/json" \
+  -d '{"uid":"<firebase-auth-uid>","role":"admin"}'
+```
+
+Consultar rol de un usuario:
+
+```bash
+curl "http://localhost:5001/guarderia-dev/us-central1/getUserRole?uid=<firebase-auth-uid>"
+```
+
+Después de cambiar un rol, el usuario debe iniciar sesión nuevamente o refrescar su ID token para recibir el custom claim actualizado.
+
 ### Firestore
 
 Los endpoints trabajan sobre la colección `items`.
@@ -310,7 +327,8 @@ Este es un segundo nivel de seguridad: el usuario debe estar autenticado y ser p
 - [x] Reglas de Firestore y Storage basadas en `request.auth`.
 - [x] Autorización por propietario en Firestore.
 - [x] Autorización por propietario en Storage.
-- [ ] Autorización por rol.
+- [x] Asignación básica de roles con custom claims.
+- [ ] Aplicar rol admin a Firestore y Storage.
 
 ### Fase 5: Calidad y Casos Avanzados
 

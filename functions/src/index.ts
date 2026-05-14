@@ -83,6 +83,31 @@ export const logoutUser = onRequest(async (req, res) => {
   }
 });
 
+/**
+ * SET ROLE - Assign a basic role custom claim to a user
+ */
+export const setUserRole = onRequest(async (req, res) => {
+  try {
+    const result = await authService.setUserRole(req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({error: "Failed to set user role"});
+  }
+});
+
+/**
+ * GET ROLE - Get a user's assigned role
+ */
+export const getUserRole = onRequest(async (req, res) => {
+  try {
+    const uid = req.query.uid as string;
+    const result = await authService.getUserRole(uid);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({error: "Failed to get user role"});
+  }
+});
+
 // ============ FIRESTORE ENDPOINTS ============
 
 /**
