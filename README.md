@@ -17,7 +17,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
 - ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
-- 🔜 **Tests de integración de endpoints**: pendiente.
+- ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
 ## Estructura del Proyecto
 
@@ -35,6 +35,7 @@ firebase_basic/
 │   │   └── index.ts                 # Cloud Functions expuestas
 │   ├── package.json                 # Scripts y dependencias de Functions
 │   ├── test/
+│   │   ├── integrationEndpoints.test.js # Tests HTTP end-to-end con emuladores
 │   │   └── securityRules.test.js    # Tests de reglas Firestore y Storage
 │   ├── tsconfig.json                # Configuración TypeScript
 │   └── .eslintrc.js                 # Configuración ESLint
@@ -108,6 +109,8 @@ npm run build:watch  # Compila en modo watch
 npm run lint         # Ejecuta ESLint
 npm run test:rules   # Ejecuta tests de reglas contra emuladores activos
 npm run test:rules:emulators # Levanta Firestore/Storage y ejecuta tests de reglas
+npm run test:integration # Ejecuta tests HTTP contra emuladores activos
+npm run test:integration:emulators # Levanta emuladores y ejecuta tests HTTP
 npm run serve        # Compila y levanta Functions, Auth, Firestore y Storage
 npm run shell        # Shell interactivo de Functions
 npm run deploy       # Despliega Cloud Functions
@@ -320,6 +323,25 @@ Escenarios cubiertos:
 - Usuario normal no puede acceder a recursos de otro usuario.
 - Usuario con `role: admin` puede acceder a recursos de otros usuarios.
 
+### Tests de Integración
+
+Los tests de integración validan el flujo HTTP real contra Cloud Functions usando Auth, Firestore y Storage en emuladores.
+
+Ejecutar desde `functions/` levantando emuladores temporales:
+
+```bash
+npm run test:integration:emulators
+```
+
+Escenarios cubiertos:
+
+- Registro de usuarios desde `registerUser`.
+- Asignación de roles con `setUserRole`.
+- Login contra Auth Emulator para obtener ID tokens.
+- Bloqueo de endpoints protegidos sin token.
+- Acceso de owner, bloqueo cross-user y acceso admin en Firestore.
+- Acceso de owner, bloqueo cross-user y acceso admin en Storage.
+
 ## Plan de Aprendizaje
 
 ### Fase 1: Cloud Functions
@@ -364,11 +386,12 @@ Escenarios cubiertos:
 - [x] Asignación básica de roles con custom claims.
 - [x] Aplicar rol admin a Firestore y Storage.
 - [x] Probar reglas de Firestore y Storage con emuladores.
+- [x] Probar endpoints HTTP protegidos con emuladores.
 
 ### Fase 5: Calidad y Casos Avanzados
 
 - [ ] Tests unitarios.
-- [ ] Tests de integración de endpoints con emuladores.
+- [x] Tests de integración de endpoints con emuladores.
 - [ ] Triggers basados en eventos.
 - [ ] Procesamiento de datos.
 - [ ] Integración con servicios externos.

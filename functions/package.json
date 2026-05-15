@@ -5,6 +5,8 @@
     "build": "tsc",
     "test:rules": "node --test test/securityRules.test.js",
     "test:rules:emulators": "firebase emulators:exec --only firestore,storage \"npm run test:rules\"",
+    "test:integration": "node --test test/integrationEndpoints.test.js",
+    "test:integration:emulators": "npm run build && firebase emulators:exec --only functions,auth,firestore,storage \"npm run test:integration\"",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions,auth,firestore,storage",
     "shell": "npm run build && firebase functions:shell",
