@@ -2,12 +2,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.role == 'admin';
+    }
 
     match /items/{itemId} {
       allow create: if request.auth != null &&
         request.resource.data.ownerId == request.auth.uid;
       allow read, update, delete: if request.auth != null &&
-        resource.data.ownerId == request.auth.uid;
+        (resource.data.ownerId == request.auth.uid || isAdmin());
     }
   }
 }

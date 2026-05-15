@@ -153,7 +153,8 @@ export const getAllItems = onRequest(async (req, res) => {
     const result = await firestoreService.getAllItems(
       limit,
       offset,
-      authUser.uid
+      authUser.uid,
+      authUser.role
     );
     res.status(200).json(result);
   } catch (error) {
@@ -179,7 +180,11 @@ export const getItemById = onRequest(async (req, res) => {
       return;
     }
 
-    const result = await firestoreService.getItemById(itemId, authUser.uid);
+    const result = await firestoreService.getItemById(
+      itemId,
+      authUser.uid,
+      authUser.role
+    );
 
     if (!result) {
       res.status(404).json({error: "Item not found"});
@@ -219,7 +224,8 @@ export const updateItem = onRequest(async (req, res) => {
     const result = await firestoreService.updateItem(
       itemId,
       updateData,
-      authUser.uid
+      authUser.uid,
+      authUser.role
     );
 
     if (!result) {
@@ -251,7 +257,11 @@ export const deleteItem = onRequest(async (req, res) => {
       return;
     }
 
-    const result = await firestoreService.deleteItem(itemId, authUser.uid);
+    const result = await firestoreService.deleteItem(
+      itemId,
+      authUser.uid,
+      authUser.role
+    );
 
     if (!result) {
       res.status(404).json({error: "Item not found"});
@@ -322,7 +332,11 @@ export const downloadFile = onRequest(async (req, res) => {
       return;
     }
 
-    const result = await storageService.downloadFile(filename, authUser.uid);
+    const result = await storageService.downloadFile(
+      filename,
+      authUser.uid,
+      authUser.role
+    );
 
     if (!result) {
       res.status(404).json({error: "File not found"});
@@ -351,7 +365,7 @@ export const listFiles = onRequest(async (req, res) => {
   }
 
   try {
-    const result = await storageService.listFiles(authUser.uid);
+    const result = await storageService.listFiles(authUser.uid, authUser.role);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({error: "Failed to list files"});
@@ -376,7 +390,11 @@ export const deleteFileEndpoint = onRequest(async (req, res) => {
       return;
     }
 
-    const result = await storageService.deleteFile(filename, authUser.uid);
+    const result = await storageService.deleteFile(
+      filename,
+      authUser.uid,
+      authUser.role
+    );
 
     if (!result) {
       res.status(404).json({error: "File not found"});

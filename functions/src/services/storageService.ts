@@ -1,6 +1,16 @@
 import {bucket} from "../config/firebase";
 
 /**
+ * Check whether a user role has admin permissions.
+ *
+ * @param {unknown} role Role claim from the Firebase ID token.
+ * @return {boolean} True when the role is admin.
+ */
+function isAdmin(role: unknown) {
+  return role === "admin";
+}
+
+/**
  * Build a user-owned Cloud Storage path.
  *
  * @param {string} ownerId Authenticated user ID.
@@ -57,10 +67,17 @@ export async function uploadFile(
  *
  * @param {string} filename Name of the file in Cloud Storage.
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object | null>} File data and metadata, or null.
  */
-export async function downloadFile(filename: string, ownerId: string) {
-  const filePath = getUserFilePath(ownerId, filename);
+export async function downloadFile(
+  filename: string,
+  ownerId: string,
+  role: unknown
+) {
+  const filePath = isAdmin(role) ?
+    filename :
+    getUserFilePath(ownerId, filename);
   const file = bucket.file(filePath);
 
   // Check if file exists
@@ -89,11 +106,12 @@ export async function downloadFile(filename: string, ownerId: string) {
  * LIST - List all files in Cloud Storage
  *
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object>} Files owned by the authenticated user.
  */
-export async function listFiles(ownerId: string) {
+export async function listFiles(ownerId: string, role: unknown) {
   const [files] = await bucket.getFiles({
-    prefix: `users/${ownerId}/`,
+    prefix: isAdmin(role) ? "users/" : `users/${ownerId}/`,
   });
 
   return {
@@ -112,10 +130,17 @@ export async function listFiles(ownerId: string) {
  *
  * @param {string} filename Name of the file in Cloud Storage.
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object | null>} Delete confirmation, or null if missing.
  */
-export async function deleteFile(filename: string, ownerId: string) {
-  const filePath = getUserFilePath(ownerId, filename);
+export async function deleteFile(
+  filename: string,
+  ownerId: string,
+  role: unknown
+) {
+  const filePath = isAdmin(role) ?
+    filename :
+    getUserFilePath(ownerId, filename);
   const file = bucket.file(filePath);
 
   // Check if file exists

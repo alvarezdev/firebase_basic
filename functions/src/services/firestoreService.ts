@@ -3,6 +3,16 @@ import {db} from "../config/firebase";
 const itemsCollection = db.collection("items");
 
 /**
+ * Check whether a user role has admin permissions.
+ *
+ * @param {unknown} role Role claim from the Firebase ID token.
+ * @return {boolean} True when the role is admin.
+ */
+function isAdmin(role: unknown) {
+  return role === "admin";
+}
+
+/**
  * CREATE - Add a new item to Firestore
  *
  * @param {any} itemData Data to store in the item document.
@@ -30,21 +40,25 @@ export async function createItem(
  * @param {number} limit Maximum number of items to return.
  * @param {number} offset Number of items to skip.
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object>} Items and pagination metadata.
  */
 export async function getAllItems(
   limit: number,
   offset: number,
-  ownerId: string
+  ownerId: string,
+  role: unknown
 ) {
-  const ownerItemsQuery = itemsCollection.where("ownerId", "==", ownerId);
+  const itemsQuery = isAdmin(role) ?
+    itemsCollection :
+    itemsCollection.where("ownerId", "==", ownerId);
 
   // Get total count of items
-  const totalSnapshot = await ownerItemsQuery.count().get();
+  const totalSnapshot = await itemsQuery.count().get();
   const total = totalSnapshot.data().count;
 
   // Get paginated items
-  const snapshot = await ownerItemsQuery
+  const snapshot = await itemsQuery
     .limit(limit + offset)
     .get();
 
@@ -72,9 +86,14 @@ export async function getAllItems(
  *
  * @param {string} itemId Firestore document ID.
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object | null>} Item data, or null if it does not exist.
  */
-export async function getItemById(itemId: string, ownerId: string) {
+export async function getItemById(
+  itemId: string,
+  ownerId: string,
+  role: unknown
+) {
   const doc = await itemsCollection.doc(itemId).get();
 
   if (!doc.exists) {
@@ -83,7 +102,7 @@ export async function getItemById(itemId: string, ownerId: string) {
 
   const itemData = doc.data();
 
-  if (itemData?.ownerId !== ownerId) {
+  if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
     return null;
   }
 
@@ -99,12 +118,14 @@ export async function getItemById(itemId: string, ownerId: string) {
  * @param {string} itemId Firestore document ID.
  * @param {any} updateData Partial data to update.
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object | null>} Updated item, or null if it does not exist.
  */
 export async function updateItem(
   itemId: string,
   updateData: Record<string, unknown>,
-  ownerId: string
+  ownerId: string,
+  role: unknown
 ) {
   // Check if document exists
   const doc = await itemsCollection.doc(itemId).get();
@@ -115,7 +136,7 @@ export async function updateItem(
 
   const itemData = doc.data();
 
-  if (itemData?.ownerId !== ownerId) {
+  if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
     return null;
   }
 
@@ -138,9 +159,14 @@ export async function updateItem(
  *
  * @param {string} itemId Firestore document ID.
  * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
  * @return {Promise<object | null>} Delete confirmation, or null if missing.
  */
-export async function deleteItem(itemId: string, ownerId: string) {
+export async function deleteItem(
+  itemId: string,
+  ownerId: string,
+  role: unknown
+) {
   // Check if document exists
   const doc = await itemsCollection.doc(itemId).get();
 
@@ -150,7 +176,7 @@ export async function deleteItem(itemId: string, ownerId: string) {
 
   const itemData = doc.data();
 
-  if (itemData?.ownerId !== ownerId) {
+  if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
     return null;
   }
 

@@ -15,7 +15,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Reglas seguras básicas**: Firestore y Storage requieren usuario autenticado.
 - ✅ **Autorización por propietario**: cada usuario accede solo a sus items y archivos.
 - ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
-- 🔜 **Uso de roles en recursos**: pendiente.
+- ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
 - 🔜 **Tests automatizados**: pendiente.
 
 ## Estructura del Proyecto
@@ -191,6 +191,8 @@ Los endpoints trabajan sobre la colección `items`.
 
 Cada item guarda automáticamente `ownerId` con el `uid` del usuario autenticado. Los listados y operaciones por ID solo devuelven documentos del propietario.
 
+Los usuarios con rol `admin` pueden listar, leer, actualizar y borrar items de cualquier usuario.
+
 Crear item:
 
 ```bash
@@ -236,6 +238,8 @@ curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteItem?id=<i
 
 Cada archivo se guarda bajo la ruta `users/{uid}/{filename}`. Los endpoints de Storage solo operan sobre archivos del usuario autenticado.
 
+Los usuarios con rol `admin` pueden listar, descargar y borrar archivos de cualquier usuario. Para descargar o borrar archivos ajenos, el admin debe usar la ruta completa devuelta por `listFiles`, por ejemplo `users/<uid>/hello.txt`.
+
 Subir archivo:
 
 ```bash
@@ -252,14 +256,21 @@ curl http://localhost:5001/guarderia-dev/us-central1/listFiles \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Descargar archivo:
+Descargar archivo propio:
 
 ```bash
 curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=hello.txt" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Borrar archivo:
+Descargar archivo como admin usando ruta completa:
+
+```bash
+curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=users/<uid>/hello.txt" \
+  -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+
+Borrar archivo propio:
 
 ```bash
 curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoint?filename=hello.txt" \
@@ -270,21 +281,22 @@ curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoi
 
 Las reglas actuales requieren autenticación y propiedad.
 
-Firestore permite crear items solo si `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario.
+Firestore permite crear items solo si `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario o que el token tenga `role: admin`.
 
 ```text
-request.auth != null && resource.data.ownerId == request.auth.uid
+request.auth != null &&
+  (resource.data.ownerId == request.auth.uid || request.auth.token.role == 'admin')
 ```
 
-Storage permite leer y escribir únicamente bajo la carpeta del usuario:
+Storage permite leer y escribir bajo la carpeta del usuario. Un token con `role: admin` puede leer y escribir bajo cualquier carpeta de usuario:
 
 ```text
-users/{request.auth.uid}/{filename}
+users/{userId}/{filename}
 ```
 
 Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`.
 
-Este es un segundo nivel de seguridad: el usuario debe estar autenticado y ser propietario del recurso. El siguiente paso es agregar autorización por rol.
+Este es un tercer nivel de seguridad: el usuario debe estar autenticado, ser propietario del recurso o tener rol `admin`.
 
 ## Plan de Aprendizaje
 
@@ -328,7 +340,7 @@ Este es un segundo nivel de seguridad: el usuario debe estar autenticado y ser p
 - [x] Autorización por propietario en Firestore.
 - [x] Autorización por propietario en Storage.
 - [x] Asignación básica de roles con custom claims.
-- [ ] Aplicar rol admin a Firestore y Storage.
+- [x] Aplicar rol admin a Firestore y Storage.
 
 ### Fase 5: Calidad y Casos Avanzados
 
