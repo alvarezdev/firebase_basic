@@ -16,7 +16,8 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Autorización por propietario**: cada usuario accede solo a sus items y archivos.
 - ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
 - ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
-- 🔜 **Tests automatizados**: pendiente.
+- ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
+- 🔜 **Tests de integración de endpoints**: pendiente.
 
 ## Estructura del Proyecto
 
@@ -33,6 +34,8 @@ firebase_basic/
 │   │   │   └── index.ts             # Export centralizado de servicios
 │   │   └── index.ts                 # Cloud Functions expuestas
 │   ├── package.json                 # Scripts y dependencias de Functions
+│   ├── test/
+│   │   └── securityRules.test.js    # Tests de reglas Firestore y Storage
 │   ├── tsconfig.json                # Configuración TypeScript
 │   └── .eslintrc.js                 # Configuración ESLint
 ├── firebase.json                    # Firebase, predeploy y emuladores
@@ -103,6 +106,8 @@ Ejecutar dentro de `functions/`:
 npm run build        # Compila TypeScript
 npm run build:watch  # Compila en modo watch
 npm run lint         # Ejecuta ESLint
+npm run test:rules   # Ejecuta tests de reglas contra emuladores activos
+npm run test:rules:emulators # Levanta Firestore/Storage y ejecuta tests de reglas
 npm run serve        # Compila y levanta Functions, Auth, Firestore y Storage
 npm run shell        # Shell interactivo de Functions
 npm run deploy       # Despliega Cloud Functions
@@ -298,6 +303,23 @@ Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase A
 
 Este es un tercer nivel de seguridad: el usuario debe estar autenticado, ser propietario del recurso o tener rol `admin`.
 
+### Tests de Reglas
+
+Los tests de reglas validan acceso directo de cliente a Firestore y Storage, sin pasar por Cloud Functions.
+
+Ejecutar desde `functions/` levantando emuladores temporales:
+
+```bash
+npm run test:rules:emulators
+```
+
+Escenarios cubiertos:
+
+- Usuario sin autenticación no puede leer ni escribir.
+- Usuario autenticado solo puede acceder a sus propios items y archivos.
+- Usuario normal no puede acceder a recursos de otro usuario.
+- Usuario con `role: admin` puede acceder a recursos de otros usuarios.
+
 ## Plan de Aprendizaje
 
 ### Fase 1: Cloud Functions
@@ -341,11 +363,12 @@ Este es un tercer nivel de seguridad: el usuario debe estar autenticado, ser pro
 - [x] Autorización por propietario en Storage.
 - [x] Asignación básica de roles con custom claims.
 - [x] Aplicar rol admin a Firestore y Storage.
+- [x] Probar reglas de Firestore y Storage con emuladores.
 
 ### Fase 5: Calidad y Casos Avanzados
 
 - [ ] Tests unitarios.
-- [ ] Tests de integración con emuladores.
+- [ ] Tests de integración de endpoints con emuladores.
 - [ ] Triggers basados en eventos.
 - [ ] Procesamiento de datos.
 - [ ] Integración con servicios externos.
