@@ -35,6 +35,19 @@ async function request(path, options = {}) {
   };
 }
 
+async function callableRequest(path, token, data = {}) {
+  const response = await request(path, {
+    method: "POST",
+    headers: authHeaders(token, {"Content-Type": "application/json"}),
+    body: JSON.stringify({data}),
+  });
+
+  assert.equal(response.status, 200);
+  assert.ok(response.body.result);
+
+  return response.body.result;
+}
+
 async function createActivationCode(email) {
   const response = await request("/createActivationCode", {
     method: "POST",
@@ -261,6 +274,44 @@ test("protected endpoints enforce owner and admin auth", async () => {
   assert.ok(
     adminListResponse.body.data.some((item) => item.id === itemId)
   );
+
+  const callableItem = await callableRequest("/createItemCall", userToken, {
+    name: "Callable integration item",
+    done: false,
+  });
+  assert.equal(callableItem.ownerId, user.uid);
+
+  const callableReadItem = await callableRequest(
+    "/getItemByIdCall",
+    userToken,
+    {id: callableItem.id}
+  );
+  assert.equal(callableReadItem.id, callableItem.id);
+
+  const callableUpdatedItem = await callableRequest(
+    "/updateItemCall",
+    userToken,
+    {
+      id: callableItem.id,
+      done: true,
+    }
+  );
+  assert.equal(callableUpdatedItem.done, true);
+
+  const callableList = await callableRequest("/getAllItemsCall", userToken, {
+    limit: 10,
+    offset: 0,
+  });
+  assert.ok(
+    callableList.data.some((item) => item.id === callableItem.id)
+  );
+
+  const callableDelete = await callableRequest(
+    "/deleteItemCall",
+    userToken,
+    {id: callableItem.id}
+  );
+  assert.equal(callableDelete.id, callableItem.id);
 
   const filename = `integration-${Date.now()}.txt`;
   const fileContent = "Storage integration content";

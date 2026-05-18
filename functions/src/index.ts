@@ -1,6 +1,12 @@
 import type {DecodedIdToken} from "firebase-admin/auth";
 import type {Response} from "express";
-import {onCall, onRequest, type Request} from "firebase-functions/v2/https";
+import {
+  HttpsError,
+  onCall,
+  onRequest,
+  type CallableRequest,
+  type Request,
+} from "firebase-functions/v2/https";
 import {authService, firestoreService, storageService} from "./services";
 import {
   RequestValidationError,
@@ -19,6 +25,11 @@ import {
 } from "./validation";
 
 const maxUploadBytes = 5 * 1024 * 1024;
+
+type CallableAuthUser = {
+  uid: string;
+  role: unknown;
+};
 
 /**
  * Send a validation-aware error response.
@@ -155,6 +166,63 @@ async function requireAdminAuth(
   if (!authService.isAdminRole(authUser.role)) {
     res.status(403).json({error: "Admin role required"});
     return null;
+  }
+
+  return authUser;
+}
+
+/**
+ * Convert validation and service errors to callable errors.
+ *
+ * @param {unknown} error Unknown caught error.
+ * @param {string} fallbackMessage Fallback error message.
+ */
+function throwCallableError(error: unknown, fallbackMessage: string): never {
+  if (error instanceof HttpsError) {
+    throw error;
+  }
+
+  if (isRequestValidationError(error)) {
+    throw new HttpsError("invalid-argument", error.message, {
+      details: error.details,
+    });
+  }
+
+  throw new HttpsError("internal", fallbackMessage);
+}
+
+/**
+ * Require a valid Firebase Auth context for callable functions.
+ *
+ * @param {CallableRequest<unknown>} request Callable request.
+ * @return {CallableAuthUser} Authenticated callable user.
+ */
+function requireCallableAuth(
+  request: CallableRequest<unknown>
+): CallableAuthUser {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Authentication required");
+  }
+
+  return {
+    uid: request.auth.uid,
+    role: request.auth.token.role,
+  };
+}
+
+/**
+ * Require an active user role for callable functions.
+ *
+ * @param {CallableRequest<unknown>} request Callable request.
+ * @return {CallableAuthUser} Authenticated active user.
+ */
+function requireCallableActiveAuth(
+  request: CallableRequest<unknown>
+): CallableAuthUser {
+  const authUser = requireCallableAuth(request);
+
+  if (!authService.isActiveRole(authUser.role)) {
+    throw new HttpsError("permission-denied", "Active user role required");
   }
 
   return authUser;
@@ -435,6 +503,123 @@ export const deleteItem = onRequest(async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to delete item");
+  }
+});
+
+// ============ FIRESTORE CALLABLE FUNCTIONS ============
+
+/**
+ * CALLABLE CREATE - Add a new item to Firestore from client SDKs
+ */
+export const createItemCall = onCall(async (request) => {
+  const authUser = requireCallableActiveAuth(request);
+
+  try {
+    const body = validateRequest(createItemSchema, request.data);
+    return await firestoreService.createItem(body, authUser.uid);
+  } catch (error) {
+    throwCallableError(error, "Failed to create item");
+  }
+});
+
+/**
+ * CALLABLE READ - Get all items with pagination support
+ */
+export const getAllItemsCall = onCall(async (request) => {
+  const authUser = requireCallableActiveAuth(request);
+
+  try {
+    const {limit, offset} = validateRequest(
+      paginationQuerySchema,
+      request.data || {}
+    );
+
+    return await firestoreService.getAllItems(
+      limit,
+      offset,
+      authUser.uid,
+      authUser.role
+    );
+  } catch (error) {
+    throwCallableError(error, "Failed to fetch items");
+  }
+});
+
+/**
+ * CALLABLE READ - Get a single item by ID
+ */
+export const getItemByIdCall = onCall(async (request) => {
+  const authUser = requireCallableActiveAuth(request);
+
+  try {
+    const {id: itemId} = validateRequest(itemIdQuerySchema, request.data);
+    const result = await firestoreService.getItemById(
+      itemId,
+      authUser.uid,
+      authUser.role
+    );
+
+    if (!result) {
+      throw new HttpsError("not-found", "Item not found");
+    }
+
+    return result;
+  } catch (error) {
+    throwCallableError(error, "Failed to fetch item");
+  }
+});
+
+/**
+ * CALLABLE UPDATE - Update an existing item
+ */
+export const updateItemCall = onCall(async (request) => {
+  const authUser = requireCallableActiveAuth(request);
+
+  try {
+    const updatePayload = {...request.data as Record<string, unknown>};
+    const {id: itemId} = validateRequest(itemIdQuerySchema, {
+      id: updatePayload.id,
+    });
+    delete updatePayload.id;
+    const updateData = validateRequest(updateItemSchema, updatePayload);
+    const result = await firestoreService.updateItem(
+      itemId,
+      updateData,
+      authUser.uid,
+      authUser.role
+    );
+
+    if (!result) {
+      throw new HttpsError("not-found", "Item not found");
+    }
+
+    return result;
+  } catch (error) {
+    throwCallableError(error, "Failed to update item");
+  }
+});
+
+/**
+ * CALLABLE DELETE - Delete an item
+ */
+export const deleteItemCall = onCall(async (request) => {
+  const authUser = requireCallableActiveAuth(request);
+
+  try {
+    const {id: itemId} = validateRequest(itemIdQuerySchema, request.data);
+    const result = await firestoreService.deleteItem(
+      itemId,
+      authUser.uid,
+      authUser.role
+    );
+
+    if (!result) {
+      throw new HttpsError("not-found", "Item not found");
+    }
+
+    return result;
+  } catch (error) {
+    throwCallableError(error, "Failed to delete item");
   }
 });
 

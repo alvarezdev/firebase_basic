@@ -19,6 +19,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Activación de administradores**: código de suscripción simulado para crear usuarios `admin`.
 - ✅ **Aprobación de usuarios**: usuarios normales quedan `pending` hasta aprobación admin.
 - ✅ **Validación de inputs**: schemas con Zod para Auth, Firestore, Storage y query params.
+- ✅ **Funciones callable para apps**: CRUD de Firestore disponible también con `onCall`.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -238,6 +239,25 @@ Cada item guarda automáticamente `ownerId` con el `uid` del usuario autenticado
 Los usuarios con rol `admin` pueden listar, leer, actualizar y borrar items de cualquier usuario.
 
 Los usuarios con rol `pending` no pueden consumir estos endpoints hasta ser aprobados por un admin.
+
+Endpoints HTTP disponibles:
+
+- `createItem`
+- `getAllItems`
+- `getItemById`
+- `updateItem`
+- `deleteItem`
+
+Funciones callable equivalentes para apps cliente:
+
+- `createItemCall`
+- `getAllItemsCall`
+- `getItemByIdCall`
+- `updateItemCall`
+- `deleteItemCall`
+
+En `onRequest` el token llega en el header `Authorization: Bearer <ID_TOKEN>`.
+En `onCall`, el SDK cliente envía el token automáticamente y la función lo recibe en `request.auth`.
 
 Los items aceptan únicamente estos campos:
 
