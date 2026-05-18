@@ -23,6 +23,56 @@ async function requireAuth(
 }
 
 /**
+ * Require an authenticated user with an active application role.
+ *
+ * @param {Request} req HTTP request.
+ * @param {Response} res HTTP response.
+ * @return {Promise<DecodedIdToken | null>} Authenticated user claims.
+ */
+async function requireActiveAuth(
+  req: Request,
+  res: Response
+): Promise<DecodedIdToken | null> {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return null;
+  }
+
+  if (!authService.isActiveRole(authUser.role)) {
+    res.status(403).json({error: "Active user role required"});
+    return null;
+  }
+
+  return authUser;
+}
+
+/**
+ * Require an authenticated user with admin permissions.
+ *
+ * @param {Request} req HTTP request.
+ * @param {Response} res HTTP response.
+ * @return {Promise<DecodedIdToken | null>} Authenticated admin claims.
+ */
+async function requireAdminAuth(
+  req: Request,
+  res: Response
+): Promise<DecodedIdToken | null> {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return null;
+  }
+
+  if (!authService.isAdminRole(authUser.role)) {
+    res.status(403).json({error: "Admin role required"});
+    return null;
+  }
+
+  return authUser;
+}
+
+/**
  * Shared business logic
  * Returns a greeting message
  */
@@ -60,6 +110,21 @@ export const registerUser = onRequest(async (req, res) => {
 });
 
 /**
+ * ACTIVATION CODE - Simulate payment provider generating an admin code
+ */
+export const createActivationCode = onRequest(async (req, res) => {
+  try {
+    const result = await authService.createActivationCode(
+      req.body,
+      req.get("x-payment-secret")
+    );
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(403).json({error: "Failed to create activation code"});
+  }
+});
+
+/**
  * CURRENT USER - Get authenticated user profile from ID token
  */
 export const getCurrentUser = onRequest(async (req, res) => {
@@ -87,8 +152,14 @@ export const logoutUser = onRequest(async (req, res) => {
  * SET ROLE - Assign a basic role custom claim to a user
  */
 export const setUserRole = onRequest(async (req, res) => {
+  const authUser = await requireAdminAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
-    const result = await authService.setUserRole(req.body);
+    const result = await authService.setUserRole(req.body, authUser.uid);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({error: "Failed to set user role"});
@@ -99,12 +170,47 @@ export const setUserRole = onRequest(async (req, res) => {
  * GET ROLE - Get a user's assigned role
  */
 export const getUserRole = onRequest(async (req, res) => {
+  const authUser = await requireAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
   try {
     const uid = req.query.uid as string;
+
+    if (!uid) {
+      res.status(400).json({error: "UID is required"});
+      return;
+    }
+
+    if (authUser.uid !== uid && !authService.isAdminRole(authUser.role)) {
+      res.status(403).json({error: "Admin role required"});
+      return;
+    }
+
     const result = await authService.getUserRole(uid);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({error: "Failed to get user role"});
+  }
+});
+
+/**
+ * PENDING USERS - List users waiting for admin approval
+ */
+export const listPendingUsers = onRequest(async (req, res) => {
+  const authUser = await requireAdminAuth(req, res);
+
+  if (!authUser) {
+    return;
+  }
+
+  try {
+    const result = await authService.listPendingUsers();
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({error: "Failed to list pending users"});
   }
 });
 
@@ -114,7 +220,7 @@ export const getUserRole = onRequest(async (req, res) => {
  * CREATE - Add a new item to Firestore
  */
 export const createItem = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -132,7 +238,7 @@ export const createItem = onRequest(async (req, res) => {
  * READ - Get all items with pagination support
  */
 export const getAllItems = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -166,7 +272,7 @@ export const getAllItems = onRequest(async (req, res) => {
  * READ - Get a single item by ID
  */
 export const getItemById = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -201,7 +307,7 @@ export const getItemById = onRequest(async (req, res) => {
  * UPDATE - Update an existing item
  */
 export const updateItem = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -243,7 +349,7 @@ export const updateItem = onRequest(async (req, res) => {
  * DELETE - Delete an item
  */
 export const deleteItem = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -280,7 +386,7 @@ export const deleteItem = onRequest(async (req, res) => {
  * UPLOAD - Upload a file to Cloud Storage
  */
 export const uploadFile = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -318,7 +424,7 @@ export const uploadFile = onRequest(async (req, res) => {
  * DOWNLOAD - Download a file from Cloud Storage
  */
 export const downloadFile = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -358,7 +464,7 @@ export const downloadFile = onRequest(async (req, res) => {
  * LIST - List all files in Cloud Storage
  */
 export const listFiles = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;
@@ -376,7 +482,7 @@ export const listFiles = onRequest(async (req, res) => {
  * DELETE - Delete a file from Cloud Storage
  */
 export const deleteFileEndpoint = onRequest(async (req, res) => {
-  const authUser = await requireAuth(req, res);
+  const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
     return;

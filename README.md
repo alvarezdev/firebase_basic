@@ -16,6 +16,8 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Autorización por propietario**: cada usuario accede solo a sus items y archivos.
 - ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
 - ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
+- ✅ **Activación de administradores**: código de suscripción simulado para crear usuarios `admin`.
+- ✅ **Aprobación de usuarios**: usuarios normales quedan `pending` hasta aprobación admin.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -143,13 +145,34 @@ Respuesta:
 
 ### Authentication
 
-Crear usuario con email y contraseña:
+Crear usuario normal con email y contraseña:
 
 ```bash
 curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@example.com","password":"secret123","displayName":"Demo User"}'
 ```
+
+El usuario queda con `role: pending` y `status: pending`. Puede autenticarse, pero no puede consumir CRUD ni Storage hasta que un admin lo apruebe.
+
+Simular pago y generar código de activación admin:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/us-central1/createActivationCode \
+  -H "x-payment-secret: demo-payment-secret" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com"}'
+```
+
+Registrar admin usando el código de activación:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"secret123","displayName":"Admin User","activationCode":"SUB-CODE"}'
+```
+
+El código solo se puede usar una vez. En emuladores se acepta `demo-payment-secret`; en producción debe configurarse `PAYMENT_WEBHOOK_SECRET`.
 
 Login con el Auth Emulator:
 
@@ -177,18 +200,27 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/logoutUser \
 
 Después del login, el ID token se envía en cada endpoint protegido con `Authorization: Bearer <ID_TOKEN>`.
 
-Asignar rol básico a un usuario:
+Listar usuarios pendientes como admin:
+
+```bash
+curl http://localhost:5001/guarderia-dev/us-central1/listPendingUsers \
+  -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+
+Asignar rol básico a un usuario como admin:
 
 ```bash
 curl -X POST http://localhost:5001/guarderia-dev/us-central1/setUserRole \
+  -H "Authorization: Bearer $TOKEN_ADMIN" \
   -H "Content-Type: application/json" \
-  -d '{"uid":"<firebase-auth-uid>","role":"admin"}'
+  -d '{"uid":"<firebase-auth-uid>","role":"user"}'
 ```
 
 Consultar rol de un usuario:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getUserRole?uid=<firebase-auth-uid>"
+curl "http://localhost:5001/guarderia-dev/us-central1/getUserRole?uid=<firebase-auth-uid>" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 Después de cambiar un rol, el usuario debe iniciar sesión nuevamente o refrescar su ID token para recibir el custom claim actualizado.
@@ -200,6 +232,8 @@ Los endpoints trabajan sobre la colección `items`.
 Cada item guarda automáticamente `ownerId` con el `uid` del usuario autenticado. Los listados y operaciones por ID solo devuelven documentos del propietario.
 
 Los usuarios con rol `admin` pueden listar, leer, actualizar y borrar items de cualquier usuario.
+
+Los usuarios con rol `pending` no pueden consumir estos endpoints hasta ser aprobados por un admin.
 
 Crear item:
 
@@ -248,6 +282,8 @@ Cada archivo se guarda bajo la ruta `users/{uid}/{filename}`. Los endpoints de S
 
 Los usuarios con rol `admin` pueden listar, descargar y borrar archivos de cualquier usuario. Para descargar o borrar archivos ajenos, el admin debe usar la ruta completa devuelta por `listFiles`, por ejemplo `users/<uid>/hello.txt`.
 
+Los usuarios con rol `pending` no pueden subir, listar, descargar ni borrar archivos.
+
 Subir archivo:
 
 ```bash
@@ -287,24 +323,27 @@ curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoi
 
 ## Seguridad
 
-Las reglas actuales requieren autenticación y propiedad.
+Las reglas actuales requieren autenticación, rol activo y propiedad.
 
-Firestore permite crear items solo si `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario o que el token tenga `role: admin`.
+Firestore permite crear items solo si el usuario tiene `role: user` o `role: admin` y `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario activo o que el token tenga `role: admin`.
 
 ```text
 request.auth != null &&
+  (request.auth.token.role == 'user' || request.auth.token.role == 'admin') &&
   (resource.data.ownerId == request.auth.uid || request.auth.token.role == 'admin')
 ```
 
-Storage permite leer y escribir bajo la carpeta del usuario. Un token con `role: admin` puede leer y escribir bajo cualquier carpeta de usuario:
+Storage permite leer y escribir bajo la carpeta del usuario solo si tiene rol activo. Un token con `role: admin` puede leer y escribir bajo cualquier carpeta de usuario:
 
 ```text
 users/{userId}/{filename}
 ```
 
-Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`.
+Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{code}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
 
-Este es un tercer nivel de seguridad: el usuario debe estar autenticado, ser propietario del recurso o tener rol `admin`.
+Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`. Si el usuario existe pero sigue `pending`, responde `403 Forbidden`.
+
+Este es un tercer nivel de seguridad: el usuario debe estar autenticado, estar activo, ser propietario del recurso o tener rol `admin`.
 
 ### Tests de Reglas
 
@@ -322,6 +361,8 @@ Escenarios cubiertos:
 - Usuario autenticado solo puede acceder a sus propios items y archivos.
 - Usuario normal no puede acceder a recursos de otro usuario.
 - Usuario con `role: admin` puede acceder a recursos de otros usuarios.
+- Usuario con `role: pending` no puede acceder a items ni archivos protegidos.
+- Clientes directos no pueden leer códigos de activación.
 
 ### Tests de Integración
 
@@ -336,6 +377,11 @@ npm run test:integration:emulators
 Escenarios cubiertos:
 
 - Registro de usuarios desde `registerUser`.
+- Generación de código admin desde `createActivationCode`.
+- Registro de admin con código de activación.
+- Bloqueo de reutilización de códigos de activación.
+- Bloqueo de usuarios `pending` antes de aprobación.
+- Listado de usuarios pendientes para admin.
 - Asignación de roles con `setUserRole`.
 - Login contra Auth Emulator para obtener ID tokens.
 - Bloqueo de endpoints protegidos sin token.
@@ -385,6 +431,9 @@ Escenarios cubiertos:
 - [x] Autorización por propietario en Storage.
 - [x] Asignación básica de roles con custom claims.
 - [x] Aplicar rol admin a Firestore y Storage.
+- [x] Crear flujo de activación admin con código de suscripción.
+- [x] Crear perfiles `users/{uid}` con estado `pending` o `active`.
+- [x] Proteger asignación de roles para uso exclusivo de admin.
 - [x] Probar reglas de Firestore y Storage con emuladores.
 - [x] Probar endpoints HTTP protegidos con emuladores.
 

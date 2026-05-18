@@ -35,7 +35,25 @@ async function request(path, options = {}) {
   };
 }
 
-async function registerUser(email, displayName) {
+async function createActivationCode(email) {
+  const response = await request("/createActivationCode", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-payment-secret": "demo-payment-secret",
+    },
+    body: JSON.stringify({email}),
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.email, email);
+  assert.equal(response.body.role, "admin");
+  assert.ok(response.body.code);
+
+  return response.body.code;
+}
+
+async function registerUser(email, displayName, activationCode) {
   const response = await request("/registerUser", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -43,6 +61,7 @@ async function registerUser(email, displayName) {
       email,
       password: "integration123",
       displayName,
+      activationCode,
     }),
   });
 
@@ -52,10 +71,10 @@ async function registerUser(email, displayName) {
   return response.body;
 }
 
-async function setUserRole(uid, role) {
+async function setUserRole(uid, role, adminToken) {
   const response = await request("/setUserRole", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: authHeaders(adminToken, {"Content-Type": "application/json"}),
     body: JSON.stringify({uid, role}),
   });
 
@@ -95,21 +114,68 @@ test("protected endpoints enforce owner and admin auth", async () => {
   const userEmail = uniqueEmail("integration-user");
   const otherEmail = uniqueEmail("integration-other");
   const adminEmail = uniqueEmail("integration-admin");
+  const activationCode = await createActivationCode(adminEmail);
 
+  const admin = await registerUser(
+    adminEmail,
+    "Integration Admin",
+    activationCode
+  );
   const user = await registerUser(userEmail, "Integration User");
   const otherUser = await registerUser(otherEmail, "Integration Other");
-  const admin = await registerUser(adminEmail, "Integration Admin");
 
-  await setUserRole(user.uid, "user");
-  await setUserRole(otherUser.uid, "user");
-  await setUserRole(admin.uid, "admin");
+  assert.equal(admin.role, "admin");
+  assert.equal(user.status, "pending");
+  assert.equal(otherUser.status, "pending");
 
-  const userToken = await loginUser(userEmail);
-  const otherToken = await loginUser(otherEmail);
   const adminToken = await loginUser(adminEmail);
+  const pendingUserToken = await loginUser(userEmail);
 
   const unauthenticatedResponse = await request("/getAllItems");
   assert.equal(unauthenticatedResponse.status, 401);
+
+  const pendingUserResponse = await request("/getAllItems", {
+    headers: authHeaders(pendingUserToken),
+  });
+  assert.equal(pendingUserResponse.status, 403);
+
+  const regularUserSetRoleResponse = await request("/setUserRole", {
+    method: "POST",
+    headers: authHeaders(
+      pendingUserToken,
+      {"Content-Type": "application/json"}
+    ),
+    body: JSON.stringify({uid: user.uid, role: "user"}),
+  });
+  assert.equal(regularUserSetRoleResponse.status, 403);
+
+  const pendingUsersResponse = await request("/listPendingUsers", {
+    headers: authHeaders(adminToken),
+  });
+  assert.equal(pendingUsersResponse.status, 200);
+  assert.ok(
+    pendingUsersResponse.body.users.some((pendingUser) =>
+      pendingUser.uid === user.uid
+    )
+  );
+
+  const reuseCodeResponse = await request("/registerUser", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      email: uniqueEmail("integration-admin-reuse"),
+      password: "integration123",
+      displayName: "Integration Admin Reuse",
+      activationCode,
+    }),
+  });
+  assert.equal(reuseCodeResponse.status, 400);
+
+  await setUserRole(user.uid, "user", adminToken);
+  await setUserRole(otherUser.uid, "user", adminToken);
+
+  const userToken = await loginUser(userEmail);
+  const otherToken = await loginUser(otherEmail);
 
   const createItemResponse = await request("/createItem", {
     method: "POST",

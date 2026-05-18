@@ -75,6 +75,19 @@ test.beforeEach(async () => {
       ownerId: "admin-uid",
     });
 
+    await setDoc(doc(firestore, "users/pending-uid"), {
+      uid: "pending-uid",
+      email: "pending@example.com",
+      role: "pending",
+      status: "pending",
+    });
+
+    await setDoc(doc(firestore, "activationCodes/SUB-TEST"), {
+      code: "SUB-TEST",
+      role: "admin",
+      used: false,
+    });
+
     await uploadString(
       ref(storage, "users/user-uid/file.txt"),
       "User file"
@@ -132,6 +145,26 @@ test("Firestore allows admins to access other users items", async () => {
   await assertSucceeds(deleteDoc(doc(adminDb, "items/user-item")));
 });
 
+test("Firestore blocks pending users from protected items", async () => {
+  const pendingDb = firestoreFor({
+    uid: "pending-uid",
+    claims: {role: "pending"},
+  });
+
+  await assertSucceeds(getDoc(doc(pendingDb, "users/pending-uid")));
+  await assertFails(setDoc(doc(pendingDb, "items/pending-item"), {
+    name: "Pending item",
+    done: false,
+    ownerId: "pending-uid",
+  }));
+});
+
+test("Firestore blocks direct access to activation codes", async () => {
+  const adminDb = firestoreFor({uid: "admin-uid", claims: {role: "admin"}});
+
+  await assertFails(getDoc(doc(adminDb, "activationCodes/SUB-TEST")));
+});
+
 test("Storage blocks unauthenticated file access", async () => {
   const storage = storageFor(null);
 
@@ -178,5 +211,17 @@ test("Storage allows admins to access other users files", async () => {
   ));
   await assertSucceeds(deleteObject(
     ref(adminStorage, "users/user-uid/file.txt")
+  ));
+});
+
+test("Storage blocks pending users from user folders", async () => {
+  const pendingStorage = storageFor({
+    uid: "pending-uid",
+    claims: {role: "pending"},
+  });
+
+  await assertFails(uploadString(
+    ref(pendingStorage, "users/pending-uid/file.txt"),
+    "Pending file"
   ));
 });
