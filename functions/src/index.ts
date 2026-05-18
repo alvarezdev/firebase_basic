@@ -25,6 +25,11 @@ import {
 } from "./validation";
 
 const maxUploadBytes = 5 * 1024 * 1024;
+const allowedUploadContentTypes = [
+  "application/json",
+  "application/pdf",
+  "text/plain",
+];
 
 type CallableAuthUser = {
   uid: string;
@@ -100,6 +105,31 @@ function validateUploadData(fileData: unknown): Buffer | string {
   }
 
   return fileData;
+}
+
+/**
+ * Validate upload content type before saving it to Storage.
+ *
+ * @param {string | undefined} contentType Incoming content type.
+ * @return {string} Validated content type.
+ */
+function validateUploadContentType(contentType: string | undefined) {
+  const normalizedContentType = (contentType || "")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+
+  if (
+    allowedUploadContentTypes.includes(normalizedContentType) ||
+    normalizedContentType.startsWith("image/")
+  ) {
+    return normalizedContentType;
+  }
+
+  throw new RequestValidationError([
+    "content-type: File type must be text/plain, application/json, " +
+      "application/pdf, or image/*",
+  ]);
 }
 
 /**
@@ -641,7 +671,7 @@ export const uploadFile = onRequest(async (req, res) => {
       req.query
     );
     let filename = requestedFilename;
-    const contentType = req.get("content-type");
+    const contentType = validateUploadContentType(req.get("content-type"));
 
     // Generate filename if not provided
     if (!filename) {

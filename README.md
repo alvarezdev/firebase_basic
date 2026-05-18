@@ -319,7 +319,9 @@ Los usuarios con rol `admin` pueden listar, descargar y borrar archivos de cualq
 
 Los usuarios con rol `pending` no pueden subir, listar, descargar ni borrar archivos.
 
-Los nombres de archivo se validan para evitar rutas inseguras y los uploads HTTP tienen límite de 5 MB.
+Los nombres de archivo se validan para evitar rutas inseguras y los uploads HTTP tienen límite de 5 MB. Para subir archivos, el nombre debe ser plano, por ejemplo `hello.txt`; no se aceptan subcarpetas como `docs/hello.txt`.
+
+Los tipos permitidos para upload son `text/plain`, `application/json`, `application/pdf` e imágenes `image/*`.
 
 Subir archivo:
 
@@ -372,11 +374,13 @@ request.auth != null &&
   (resource.data.ownerId == request.auth.uid || request.auth.token.role == 'admin')
 ```
 
-Storage permite leer y escribir bajo la carpeta del usuario solo si tiene rol activo. Un token con `role: admin` puede leer y escribir bajo cualquier carpeta de usuario:
+Storage permite leer y borrar bajo la carpeta del usuario solo si tiene rol activo. Un token con `role: admin` puede leer y borrar bajo cualquier carpeta de usuario:
 
 ```text
 users/{userId}/{filename}
 ```
+
+Para crear o actualizar archivos desde clientes directos, Storage Rules exige ruta plana, tamaño mayor a 0, máximo 5 MB y `contentType` permitido. Las rutas anidadas bajo `users/{uid}/...` quedan bloqueadas por reglas.
 
 Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{code}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
 
@@ -405,6 +409,7 @@ Escenarios cubiertos:
 - Usuario con `role: pending` no puede acceder a items ni archivos protegidos.
 - Clientes directos no pueden leer códigos de activación.
 - Firestore rechaza items con campos extra, tipos inválidos o cambios de `ownerId`.
+- Storage rechaza uploads con MIME no permitido, rutas anidadas o archivos mayores a 5 MB.
 
 ### Tests de Integración
 

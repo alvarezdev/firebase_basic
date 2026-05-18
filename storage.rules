@@ -5,6 +5,16 @@ rules_version = '2';
 //    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    function isAllowedContentType() {
+      return request.resource != null &&
+        (
+          request.resource.contentType == 'text/plain' ||
+          request.resource.contentType == 'application/json' ||
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType.matches('image/.*')
+        );
+    }
+
     function isAdmin() {
       return request.auth != null &&
         request.auth.token.role == 'admin';
@@ -15,9 +25,28 @@ service firebase.storage {
         (request.auth.token.role == 'user' || isAdmin());
     }
 
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if isActiveUser() &&
+    function isValidUpload() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size <= 5 * 1024 * 1024 &&
+        isAllowedContentType();
+    }
+
+    match /users/{userId}/{fileName} {
+      allow read, delete: if isActiveUser() &&
         (request.auth.uid == userId || isAdmin());
+
+      allow create, update: if isActiveUser() &&
+        (request.auth.uid == userId || isAdmin()) &&
+        isValidUpload();
+    }
+
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

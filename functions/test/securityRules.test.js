@@ -212,7 +212,9 @@ test("Storage allows owners and blocks cross-user access", async () => {
   ));
   await assertSucceeds(uploadString(
     ref(ownerStorage, "users/user-uid/new-file.txt"),
-    "New file"
+    "New file",
+    "raw",
+    {contentType: "text/plain"}
   ));
   await assertFails(getBytes(
     ref(otherStorage, "users/user-uid/file.txt")
@@ -244,6 +246,35 @@ test("Storage blocks pending users from user folders", async () => {
 
   await assertFails(uploadString(
     ref(pendingStorage, "users/pending-uid/file.txt"),
-    "Pending file"
+    "Pending file",
+    "raw",
+    {contentType: "text/plain"}
+  ));
+});
+
+test("Storage blocks invalid uploads", async () => {
+  const ownerStorage = storageFor({
+    uid: "user-uid",
+    claims: {role: "user"},
+  });
+  const largeContent = "x".repeat((5 * 1024 * 1024) + 1);
+
+  await assertFails(uploadString(
+    ref(ownerStorage, "users/user-uid/file.exe"),
+    "Invalid type",
+    "raw",
+    {contentType: "application/x-msdownload"}
+  ));
+  await assertFails(uploadString(
+    ref(ownerStorage, "users/user-uid/nested/file.txt"),
+    "Nested file",
+    "raw",
+    {contentType: "text/plain"}
+  ));
+  await assertFails(uploadString(
+    ref(ownerStorage, "users/user-uid/large-file.txt"),
+    largeContent,
+    "raw",
+    {contentType: "text/plain"}
   ));
 });

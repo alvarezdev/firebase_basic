@@ -33,6 +33,11 @@ const filenameSchema = z.string()
     message: "Filename must not include parent directory segments",
   });
 
+const uploadFilenameSchema = filenameSchema.refine(
+  (filename) => !filename.includes("/"),
+  {message: "Upload filename must not include folders"}
+);
+
 export const registerUserSchema = z.object({
   email: emailSchema,
   password: z.string().min(6).max(128),
@@ -76,7 +81,7 @@ export const updateItemSchema = z.object({
 });
 
 export const uploadFileQuerySchema = z.object({
-  filename: filenameSchema.optional(),
+  filename: uploadFilenameSchema.optional(),
 }).strict();
 
 export const filenameQuerySchema = z.object({
