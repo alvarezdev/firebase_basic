@@ -2,25 +2,13 @@ import {randomBytes} from "crypto";
 import {DecodedIdToken} from "firebase-admin/auth";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import {auth, db} from "../config/firebase";
-
-interface RegisterUserData {
-  email?: string;
-  password?: string;
-  displayName?: string;
-  activationCode?: string;
-}
+import type {
+  CreateActivationCodeInput,
+  RegisterUserInput,
+  SetUserRoleInput,
+} from "../validation";
 
 type UserRole = "pending" | "user" | "admin";
-
-interface SetUserRoleData {
-  uid?: string;
-  role?: Exclude<UserRole, "pending">;
-}
-
-interface CreateActivationCodeData {
-  email?: string;
-  expiresInHours?: number;
-}
 
 const userProfilesCollection = db.collection("users");
 const activationCodesCollection = db.collection("activationCodes");
@@ -206,10 +194,10 @@ async function saveUserProfile(data: {
 /**
  * AUTH - Register a new Firebase Auth user
  *
- * @param {RegisterUserData} userData User registration data.
+ * @param {RegisterUserInput} userData User registration data.
  * @return {Promise<object>} Created user metadata.
  */
-export async function registerUser(userData: RegisterUserData) {
+export async function registerUser(userData: RegisterUserInput) {
   const {email, password, displayName, activationCode} = userData;
 
   if (!email || !password) {
@@ -319,12 +307,12 @@ export async function getCurrentUser(authorizationHeader: string | undefined) {
 /**
  * AUTH - Set a basic role custom claim for a Firebase Auth user
  *
- * @param {SetUserRoleData} roleData User ID and role to assign.
+ * @param {SetUserRoleInput} roleData User ID and role to assign.
  * @param {string | undefined} approvedBy Admin user ID approving the role.
  * @return {Promise<object>} Updated user role metadata.
  */
 export async function setUserRole(
-  roleData: SetUserRoleData,
+  roleData: SetUserRoleInput,
   approvedBy?: string
 ) {
   const {uid, role} = roleData;
@@ -381,12 +369,12 @@ export async function getUserRole(uid: string) {
 /**
  * AUTH - Create an activation code after a simulated payment event
  *
- * @param {CreateActivationCodeData} data Activation code metadata.
+ * @param {CreateActivationCodeInput} data Activation code metadata.
  * @param {string | undefined} paymentSecret Payment webhook secret header.
  * @return {Promise<object>} Created activation code metadata.
  */
 export async function createActivationCode(
-  data: CreateActivationCodeData,
+  data: CreateActivationCodeInput,
   paymentSecret: string | undefined
 ) {
   validatePaymentSecret(paymentSecret);

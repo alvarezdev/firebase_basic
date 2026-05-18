@@ -131,8 +131,27 @@ test("Firestore allows owners and blocks cross-user access", async () => {
   await assertSucceeds(updateDoc(doc(ownerDb, "items/user-item"), {
     done: true,
   }));
+  await assertFails(updateDoc(doc(ownerDb, "items/user-item"), {
+    ownerId: "other-uid",
+  }));
   await assertFails(getDoc(doc(otherDb, "items/user-item")));
   await assertFails(deleteDoc(doc(otherDb, "items/user-item")));
+});
+
+test("Firestore blocks invalid item shapes", async () => {
+  const ownerDb = firestoreFor({uid: "user-uid", claims: {role: "user"}});
+
+  await assertFails(setDoc(doc(ownerDb, "items/extra-field-item"), {
+    name: "Invalid item",
+    done: false,
+    ownerId: "user-uid",
+    unexpected: true,
+  }));
+  await assertFails(setDoc(doc(ownerDb, "items/wrong-type-item"), {
+    name: "Invalid item",
+    done: "false",
+    ownerId: "user-uid",
+  }));
 });
 
 test("Firestore allows admins to access other users items", async () => {
@@ -141,6 +160,9 @@ test("Firestore allows admins to access other users items", async () => {
   await assertSucceeds(getDoc(doc(adminDb, "items/user-item")));
   await assertSucceeds(updateDoc(doc(adminDb, "items/user-item"), {
     done: true,
+  }));
+  await assertFails(updateDoc(doc(adminDb, "items/user-item"), {
+    ownerId: "admin-uid",
   }));
   await assertSucceeds(deleteDoc(doc(adminDb, "items/user-item")));
 });

@@ -1,4 +1,5 @@
 import {db} from "../config/firebase";
+import type {CreateItemInput, UpdateItemInput} from "../validation";
 
 const itemsCollection = db.collection("items");
 
@@ -20,7 +21,7 @@ function isAdmin(role: unknown) {
  * @return {Promise<object>} Created item with generated Firestore ID.
  */
 export async function createItem(
-  itemData: Record<string, unknown>,
+  itemData: CreateItemInput,
   ownerId: string
 ) {
   const data = {
@@ -123,7 +124,7 @@ export async function getItemById(
  */
 export async function updateItem(
   itemId: string,
-  updateData: Record<string, unknown>,
+  updateData: UpdateItemInput,
   ownerId: string,
   role: unknown
 ) {
@@ -139,8 +140,6 @@ export async function updateItem(
   if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
     return null;
   }
-
-  delete updateData.ownerId;
 
   // Update the document
   await itemsCollection.doc(itemId).update(updateData);

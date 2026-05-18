@@ -18,6 +18,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
 - ✅ **Activación de administradores**: código de suscripción simulado para crear usuarios `admin`.
 - ✅ **Aprobación de usuarios**: usuarios normales quedan `pending` hasta aprobación admin.
+- ✅ **Validación de inputs**: schemas con Zod para Auth, Firestore, Storage y query params.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -34,6 +35,9 @@ firebase_basic/
 │   │   │   ├── firestoreService.ts  # Operaciones CRUD para Firestore
 │   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
 │   │   │   └── index.ts             # Export centralizado de servicios
+│   │   ├── validation/
+│   │   │   ├── index.ts             # Helper centralizado de validación
+│   │   │   └── schemas.ts           # Schemas Zod para requests
 │   │   └── index.ts                 # Cloud Functions expuestas
 │   ├── package.json                 # Scripts y dependencias de Functions
 │   ├── test/
@@ -235,6 +239,17 @@ Los usuarios con rol `admin` pueden listar, leer, actualizar y borrar items de c
 
 Los usuarios con rol `pending` no pueden consumir estos endpoints hasta ser aprobados por un admin.
 
+Los items aceptan únicamente estos campos:
+
+```json
+{
+  "name": "Primer item",
+  "done": false
+}
+```
+
+`ownerId` lo asigna el backend con el `uid` autenticado y no se acepta desde el cliente.
+
 Crear item:
 
 ```bash
@@ -284,6 +299,8 @@ Los usuarios con rol `admin` pueden listar, descargar y borrar archivos de cualq
 
 Los usuarios con rol `pending` no pueden subir, listar, descargar ni borrar archivos.
 
+Los nombres de archivo se validan para evitar rutas inseguras y los uploads HTTP tienen límite de 5 MB.
+
 Subir archivo:
 
 ```bash
@@ -327,6 +344,8 @@ Las reglas actuales requieren autenticación, rol activo y propiedad.
 
 Firestore permite crear items solo si el usuario tiene `role: user` o `role: admin` y `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario activo o que el token tenga `role: admin`.
 
+Además, las reglas validan que los documentos `items` tengan solo `name`, `done` y `ownerId`, con tipos correctos, y que `ownerId` no cambie durante updates.
+
 ```text
 request.auth != null &&
   (request.auth.token.role == 'user' || request.auth.token.role == 'admin') &&
@@ -342,6 +361,8 @@ users/{userId}/{filename}
 Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{code}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
 
 Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`. Si el usuario existe pero sigue `pending`, responde `403 Forbidden`.
+
+Los endpoints validan `body`, `query params` y nombres de archivo con schemas antes de ejecutar la lógica de negocio. Si el request no cumple el schema, responde `400 Invalid request data`.
 
 Este es un tercer nivel de seguridad: el usuario debe estar autenticado, estar activo, ser propietario del recurso o tener rol `admin`.
 
@@ -363,6 +384,7 @@ Escenarios cubiertos:
 - Usuario con `role: admin` puede acceder a recursos de otros usuarios.
 - Usuario con `role: pending` no puede acceder a items ni archivos protegidos.
 - Clientes directos no pueden leer códigos de activación.
+- Firestore rechaza items con campos extra, tipos inválidos o cambios de `ownerId`.
 
 ### Tests de Integración
 
@@ -385,6 +407,7 @@ Escenarios cubiertos:
 - Asignación de roles con `setUserRole`.
 - Login contra Auth Emulator para obtener ID tokens.
 - Bloqueo de endpoints protegidos sin token.
+- Bloqueo de requests con campos no permitidos.
 - Acceso de owner, bloqueo cross-user y acceso admin en Firestore.
 - Acceso de owner, bloqueo cross-user y acceso admin en Storage.
 
@@ -404,7 +427,7 @@ Escenarios cubiertos:
 - [x] Listar documentos con paginación básica.
 - [x] Actualizar documentos.
 - [x] Borrar documentos.
-- [ ] Agregar validación de datos.
+- [x] Agregar validación de datos.
 - [ ] Agregar filtros y queries más específicas.
 - [ ] Explorar transacciones.
 
@@ -434,6 +457,7 @@ Escenarios cubiertos:
 - [x] Crear flujo de activación admin con código de suscripción.
 - [x] Crear perfiles `users/{uid}` con estado `pending` o `active`.
 - [x] Proteger asignación de roles para uso exclusivo de admin.
+- [x] Validar requests con schemas antes de ejecutar servicios.
 - [x] Probar reglas de Firestore y Storage con emuladores.
 - [x] Probar endpoints HTTP protegidos con emuladores.
 

@@ -189,6 +189,17 @@ test("protected endpoints enforce owner and admin auth", async () => {
   assert.equal(createItemResponse.status, 201);
   assert.equal(createItemResponse.body.ownerId, user.uid);
 
+  const invalidCreateResponse = await request("/createItem", {
+    method: "POST",
+    headers: authHeaders(userToken, {"Content-Type": "application/json"}),
+    body: JSON.stringify({
+      name: "Invalid item",
+      done: false,
+      ownerId: user.uid,
+    }),
+  });
+  assert.equal(invalidCreateResponse.status, 400);
+
   const itemId = createItemResponse.body.id;
 
   const ownerReadResponse = await request(`/getItemById?id=${itemId}`, {
@@ -221,13 +232,19 @@ test("protected endpoints enforce owner and admin auth", async () => {
     body: JSON.stringify({
       name: "Updated by admin",
       done: true,
-      ownerId: admin.uid,
     }),
   });
   assert.equal(adminUpdateResponse.status, 200);
   assert.equal(adminUpdateResponse.body.name, "Updated by admin");
   assert.equal(adminUpdateResponse.body.done, true);
   assert.equal(adminUpdateResponse.body.ownerId, user.uid);
+
+  const invalidUpdateResponse = await request(`/updateItem?id=${itemId}`, {
+    method: "PUT",
+    headers: authHeaders(adminToken, {"Content-Type": "application/json"}),
+    body: JSON.stringify({ownerId: admin.uid}),
+  });
+  assert.equal(invalidUpdateResponse.status, 400);
 
   const userListResponse = await request("/getAllItems?limit=10&offset=0", {
     headers: authHeaders(userToken),

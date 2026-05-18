@@ -2,6 +2,94 @@ import type {DecodedIdToken} from "firebase-admin/auth";
 import type {Response} from "express";
 import {onCall, onRequest, type Request} from "firebase-functions/v2/https";
 import {authService, firestoreService, storageService} from "./services";
+import {
+  RequestValidationError,
+  createActivationCodeSchema,
+  createItemSchema,
+  filenameQuerySchema,
+  isRequestValidationError,
+  itemIdQuerySchema,
+  paginationQuerySchema,
+  registerUserSchema,
+  setUserRoleSchema,
+  uidQuerySchema,
+  updateItemSchema,
+  uploadFileQuerySchema,
+  validateRequest,
+} from "./validation";
+
+const maxUploadBytes = 5 * 1024 * 1024;
+
+/**
+ * Send a validation-aware error response.
+ *
+ * @param {Response} res HTTP response.
+ * @param {unknown} error Unknown caught error.
+ * @param {string} fallbackMessage Fallback error message.
+ * @param {number} statusCode Fallback HTTP status code.
+ */
+function sendErrorResponse(
+  res: Response,
+  error: unknown,
+  fallbackMessage: string,
+  statusCode = 400
+) {
+  if (isRequestValidationError(error)) {
+    res.status(400).json({
+      error: error.message,
+      details: error.details,
+    });
+    return;
+  }
+
+  res.status(statusCode).json({error: fallbackMessage});
+}
+
+/**
+ * Get the upload payload size in bytes.
+ *
+ * @param {unknown} fileData Incoming upload data.
+ * @return {number} Payload size in bytes.
+ */
+function getUploadSize(fileData: unknown) {
+  if (Buffer.isBuffer(fileData)) {
+    return fileData.length;
+  }
+
+  if (typeof fileData === "string") {
+    return Buffer.byteLength(fileData);
+  }
+
+  return 0;
+}
+
+/**
+ * Validate upload body before saving it to Storage.
+ *
+ * @param {unknown} fileData Incoming upload data.
+ * @return {Buffer | string} Validated upload data.
+ */
+function validateUploadData(fileData: unknown): Buffer | string {
+  if (!Buffer.isBuffer(fileData) && typeof fileData !== "string") {
+    throw new RequestValidationError([
+      "body: File data must be text or binary",
+    ]);
+  }
+
+  const uploadSize = getUploadSize(fileData);
+
+  if (uploadSize === 0) {
+    throw new RequestValidationError(["body: File data is required"]);
+  }
+
+  if (uploadSize > maxUploadBytes) {
+    throw new RequestValidationError([
+      "body: File data must not be larger than 5MB",
+    ]);
+  }
+
+  return fileData;
+}
 
 /**
  * Require a valid Firebase Auth ID token for HTTP endpoints.
@@ -102,10 +190,11 @@ export const helloHttp = onRequest(async (req, res) => {
  */
 export const registerUser = onRequest(async (req, res) => {
   try {
-    const result = await authService.registerUser(req.body);
+    const body = validateRequest(registerUserSchema, req.body);
+    const result = await authService.registerUser(body);
     res.status(201).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to register user"});
+    sendErrorResponse(res, error, "Failed to register user");
   }
 });
 
@@ -114,13 +203,14 @@ export const registerUser = onRequest(async (req, res) => {
  */
 export const createActivationCode = onRequest(async (req, res) => {
   try {
+    const body = validateRequest(createActivationCodeSchema, req.body);
     const result = await authService.createActivationCode(
-      req.body,
+      body,
       req.get("x-payment-secret")
     );
     res.status(201).json(result);
   } catch (error) {
-    res.status(403).json({error: "Failed to create activation code"});
+    sendErrorResponse(res, error, "Failed to create activation code", 403);
   }
 });
 
@@ -132,7 +222,7 @@ export const getCurrentUser = onRequest(async (req, res) => {
     const result = await authService.getCurrentUser(req.get("authorization"));
     res.status(200).json(result);
   } catch (error) {
-    res.status(401).json({error: "Authentication required"});
+    sendErrorResponse(res, error, "Authentication required", 401);
   }
 });
 
@@ -144,7 +234,7 @@ export const logoutUser = onRequest(async (req, res) => {
     const result = await authService.logoutUser(req.get("authorization"));
     res.status(200).json(result);
   } catch (error) {
-    res.status(401).json({error: "Authentication required"});
+    sendErrorResponse(res, error, "Authentication required", 401);
   }
 });
 
@@ -159,10 +249,11 @@ export const setUserRole = onRequest(async (req, res) => {
   }
 
   try {
-    const result = await authService.setUserRole(req.body, authUser.uid);
+    const body = validateRequest(setUserRoleSchema, req.body);
+    const result = await authService.setUserRole(body, authUser.uid);
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to set user role"});
+    sendErrorResponse(res, error, "Failed to set user role");
   }
 });
 
@@ -177,12 +268,7 @@ export const getUserRole = onRequest(async (req, res) => {
   }
 
   try {
-    const uid = req.query.uid as string;
-
-    if (!uid) {
-      res.status(400).json({error: "UID is required"});
-      return;
-    }
+    const {uid} = validateRequest(uidQuerySchema, req.query);
 
     if (authUser.uid !== uid && !authService.isAdminRole(authUser.role)) {
       res.status(403).json({error: "Admin role required"});
@@ -192,7 +278,7 @@ export const getUserRole = onRequest(async (req, res) => {
     const result = await authService.getUserRole(uid);
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to get user role"});
+    sendErrorResponse(res, error, "Failed to get user role");
   }
 });
 
@@ -210,7 +296,7 @@ export const listPendingUsers = onRequest(async (req, res) => {
     const result = await authService.listPendingUsers();
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to list pending users"});
+    sendErrorResponse(res, error, "Failed to list pending users");
   }
 });
 
@@ -227,10 +313,11 @@ export const createItem = onRequest(async (req, res) => {
   }
 
   try {
-    const result = await firestoreService.createItem(req.body, authUser.uid);
+    const body = validateRequest(createItemSchema, req.body);
+    const result = await firestoreService.createItem(body, authUser.uid);
     res.status(201).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to create item"});
+    sendErrorResponse(res, error, "Failed to create item");
   }
 });
 
@@ -245,16 +332,7 @@ export const getAllItems = onRequest(async (req, res) => {
   }
 
   try {
-    let limit = parseInt(req.query.limit as string) || 10;
-    let offset = parseInt(req.query.offset as string) || 0;
-
-    // Validate and constrain limit
-    if (limit < 1 || limit > 100) {
-      limit = 10;
-    }
-    if (offset < 0) {
-      offset = 0;
-    }
+    const {limit, offset} = validateRequest(paginationQuerySchema, req.query);
 
     const result = await firestoreService.getAllItems(
       limit,
@@ -264,7 +342,7 @@ export const getAllItems = onRequest(async (req, res) => {
     );
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to fetch items"});
+    sendErrorResponse(res, error, "Failed to fetch items");
   }
 });
 
@@ -279,12 +357,7 @@ export const getItemById = onRequest(async (req, res) => {
   }
 
   try {
-    const itemId = req.query.id as string;
-
-    if (!itemId) {
-      res.status(400).json({error: "Item ID is required"});
-      return;
-    }
+    const {id: itemId} = validateRequest(itemIdQuerySchema, req.query);
 
     const result = await firestoreService.getItemById(
       itemId,
@@ -299,7 +372,7 @@ export const getItemById = onRequest(async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to fetch item"});
+    sendErrorResponse(res, error, "Failed to fetch item");
   }
 });
 
@@ -314,18 +387,8 @@ export const updateItem = onRequest(async (req, res) => {
   }
 
   try {
-    const itemId = req.query.id as string;
-    const updateData = req.body;
-
-    if (!itemId) {
-      res.status(400).json({error: "Item ID is required"});
-      return;
-    }
-
-    if (!updateData || Object.keys(updateData).length === 0) {
-      res.status(400).json({error: "Update data is required"});
-      return;
-    }
+    const {id: itemId} = validateRequest(itemIdQuerySchema, req.query);
+    const updateData = validateRequest(updateItemSchema, req.body);
 
     const result = await firestoreService.updateItem(
       itemId,
@@ -341,7 +404,7 @@ export const updateItem = onRequest(async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to update item"});
+    sendErrorResponse(res, error, "Failed to update item");
   }
 });
 
@@ -356,12 +419,7 @@ export const deleteItem = onRequest(async (req, res) => {
   }
 
   try {
-    const itemId = req.query.id as string;
-
-    if (!itemId) {
-      res.status(400).json({error: "Item ID is required"});
-      return;
-    }
+    const {id: itemId} = validateRequest(itemIdQuerySchema, req.query);
 
     const result = await firestoreService.deleteItem(
       itemId,
@@ -376,7 +434,7 @@ export const deleteItem = onRequest(async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to delete item"});
+    sendErrorResponse(res, error, "Failed to delete item");
   }
 });
 
@@ -393,7 +451,11 @@ export const uploadFile = onRequest(async (req, res) => {
   }
 
   try {
-    let filename = req.query.filename as string;
+    const {filename: requestedFilename} = validateRequest(
+      uploadFileQuerySchema,
+      req.query
+    );
+    let filename = requestedFilename;
     const contentType = req.get("content-type");
 
     // Generate filename if not provided
@@ -403,20 +465,17 @@ export const uploadFile = onRequest(async (req, res) => {
       }`;
     }
 
-    if (!req.body || req.body.length === 0) {
-      res.status(400).json({error: "File data is required"});
-      return;
-    }
+    const fileData = validateUploadData(req.body);
 
     const result = await storageService.uploadFile(
       filename,
-      req.body,
+      fileData,
       contentType,
       authUser.uid
     );
     res.status(201).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to upload file"});
+    sendErrorResponse(res, error, "Failed to upload file");
   }
 });
 
@@ -431,12 +490,7 @@ export const downloadFile = onRequest(async (req, res) => {
   }
 
   try {
-    const filename = req.query.filename as string;
-
-    if (!filename) {
-      res.status(400).json({error: "Filename is required"});
-      return;
-    }
+    const {filename} = validateRequest(filenameQuerySchema, req.query);
 
     const result = await storageService.downloadFile(
       filename,
@@ -456,7 +510,7 @@ export const downloadFile = onRequest(async (req, res) => {
     );
     res.send(result.data);
   } catch (error) {
-    res.status(400).json({error: "Failed to download file"});
+    sendErrorResponse(res, error, "Failed to download file");
   }
 });
 
@@ -474,7 +528,7 @@ export const listFiles = onRequest(async (req, res) => {
     const result = await storageService.listFiles(authUser.uid, authUser.role);
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to list files"});
+    sendErrorResponse(res, error, "Failed to list files");
   }
 });
 
@@ -489,12 +543,7 @@ export const deleteFileEndpoint = onRequest(async (req, res) => {
   }
 
   try {
-    const filename = req.query.filename as string;
-
-    if (!filename) {
-      res.status(400).json({error: "Filename is required"});
-      return;
-    }
+    const {filename} = validateRequest(filenameQuerySchema, req.query);
 
     const result = await storageService.deleteFile(
       filename,
@@ -509,6 +558,6 @@ export const deleteFileEndpoint = onRequest(async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({error: "Failed to delete file"});
+    sendErrorResponse(res, error, "Failed to delete file");
   }
 });

@@ -12,11 +12,25 @@ service cloud.firestore {
         (request.auth.token.role == 'user' || isAdmin());
     }
 
+    function isValidItem(data) {
+      return data.keys().hasOnly(['name', 'done', 'ownerId']) &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.name.size() <= 100 &&
+        data.done is bool &&
+        data.ownerId is string;
+    }
+
     match /items/{itemId} {
       allow create: if isActiveUser() &&
+        isValidItem(request.resource.data) &&
         request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isActiveUser() &&
+      allow read, delete: if isActiveUser() &&
         (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow update: if isActiveUser() &&
+        (resource.data.ownerId == request.auth.uid || isAdmin()) &&
+        isValidItem(request.resource.data) &&
+        request.resource.data.ownerId == resource.data.ownerId;
     }
 
     match /users/{userId} {
