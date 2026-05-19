@@ -24,6 +24,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **CORS configurado**: orígenes permitidos definidos para HTTP y `onCall`.
 - ✅ **Logs estructurados**: operaciones exitosas y errores registran metadata segura.
 - ✅ **Rate limiting básico**: límite en memoria para endpoints HTTP y funciones `onCall`.
+- ✅ **App Check en callable**: funciones `onCall` exigen token de App Check válido.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -292,6 +293,7 @@ Funciones callable equivalentes para apps cliente:
 
 En `onRequest` el token llega en el header `Authorization: Bearer <ID_TOKEN>`.
 En `onCall`, el SDK cliente envía el token automáticamente y, para este flujo didáctico, también se envía `idToken` dentro de `data` para validar revocación con Firebase Admin.
+Las funciones `onCall` también tienen App Check activo, por lo que las apps cliente deben inicializar App Check para que Firebase envíe el token de app legítima.
 
 Los items aceptan únicamente estos campos:
 
@@ -548,6 +550,7 @@ El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
 - Cloud Functions configuradas explícitamente en `us-central1`.
 - CORS permite localhost, 127.0.0.1 y dominios Firebase Hosting del proyecto.
 - Rate limiting básico en memoria: 60 requests por minuto por cliente y función.
+- App Check está aplicado en funciones `onCall`; endpoints HTTP quedan protegidos por Auth, roles, validación, CORS y rate limiting.
 - Runtime de Functions: Node.js 20.
 - Lenguaje: TypeScript.
 

@@ -16,4 +16,5 @@ export const httpsOptions: HttpsOptions = {
 
 export const callableOptions: CallableOptions = {
   cors: allowedCorsOrigins,
+  enforceAppCheck: true,
 };

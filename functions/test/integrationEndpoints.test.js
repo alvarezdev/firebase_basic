@@ -8,6 +8,11 @@ const functionsBaseUrl =
   `http://127.0.0.1:5001/${projectId}/us-central1`;
 const authBaseUrl =
   "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1";
+const appCheckToken = fakeJwt({
+  sub: "integration-test-app",
+  aud: projectId,
+  iss: "firebase-app-check-emulator",
+});
 
 function uniqueEmail(prefix) {
   return `${prefix}-${Date.now()}-${Math.random()
@@ -39,7 +44,10 @@ async function request(path, options = {}) {
 async function callableRequest(path, token, data = {}) {
   const response = await request(path, {
     method: "POST",
-    headers: authHeaders(token, {"Content-Type": "application/json"}),
+    headers: authHeaders(token, {
+      "Content-Type": "application/json",
+      "X-Firebase-AppCheck": appCheckToken,
+    }),
     body: JSON.stringify({data: {...data, idToken: token}}),
   });
 
@@ -122,6 +130,14 @@ function authHeaders(token, extraHeaders = {}) {
     Authorization: `Bearer ${token}`,
     ...extraHeaders,
   };
+}
+
+function fakeJwt(payload) {
+  const encode = (value) => Buffer
+    .from(JSON.stringify(value))
+    .toString("base64url");
+
+  return `${encode({alg: "none", typ: "JWT"})}.${encode(payload)}.`;
 }
 
 test("functions expose configured CORS headers", async () => {
