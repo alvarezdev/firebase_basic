@@ -56,7 +56,7 @@ async function callableRequest(path, token, data = {}) {
       "Content-Type": "application/json",
       "X-Firebase-AppCheck": appCheckToken,
     }),
-    body: JSON.stringify({data: {...data, idToken: token}}),
+    body: JSON.stringify({data}),
   });
 
   assert.equal(response.status, 200);
