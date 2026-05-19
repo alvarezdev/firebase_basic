@@ -10,6 +10,7 @@ export type AppErrorCode =
   | "authentication"
   | "authorization"
   | "bad-request"
+  | "method-not-allowed"
   | "not-found"
   | "conflict"
   | "rate-limit"
@@ -92,6 +93,22 @@ export function badRequestError(message: string) {
     code: "bad-request",
     message,
     httpStatus: 400,
+    callableCode: "invalid-argument",
+    shouldLogAsError: false,
+  });
+}
+
+/**
+ * Create a method-not-allowed error.
+ *
+ * @param {string} message Public error message.
+ * @return {AppError} Application error.
+ */
+export function methodNotAllowedError(message = "Method not allowed") {
+  return new AppError({
+    code: "method-not-allowed",
+    message,
+    httpStatus: 405,
     callableCode: "invalid-argument",
     shouldLogAsError: false,
   });

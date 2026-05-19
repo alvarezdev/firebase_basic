@@ -27,7 +27,13 @@ import {
   updateItemHandler,
   uploadFileHandler,
 } from "./http/handlers";
-import {withHttpRateLimit} from "./http";
+import {
+  type HttpMethod,
+  withHttpMethods,
+  withHttpRateLimit,
+} from "./http";
+
+type HttpHandler = Parameters<typeof withHttpRateLimit>[1];
 
 setGlobalOptions({
   region: "us-central1",
@@ -39,6 +45,25 @@ setGlobalOptions({
  */
 async function getHelloMessage() {
   return {message: "Hola 🚀"};
+}
+
+/**
+ * Apply shared HTTP protections to an endpoint.
+ *
+ * @param {string} operation Operation name.
+ * @param {HttpMethod[]} methods Allowed HTTP methods.
+ * @param {HttpHandler} handler HTTP handler.
+ * @return {HttpHandler} Protected HTTP handler.
+ */
+function httpEndpoint(
+  operation: string,
+  methods: HttpMethod[],
+  handler: HttpHandler
+): HttpHandler {
+  return withHttpRateLimit(
+    operation,
+    withHttpMethods(operation, methods, handler)
+  );
 }
 
 /**
@@ -56,64 +81,64 @@ export const helloCall = onCall(callableOptions, withCallableRateLimit(
  */
 export const helloHttp = onRequest(httpsOptions, withHttpRateLimit(
   "helloHttp",
-  async (req, res) => {
+  withHttpMethods("helloHttp", ["GET"], async (req, res) => {
     const result = await getHelloMessage();
     res.json(result);
-  }
+  })
 ));
 
 // ============ AUTH ENDPOINTS ============
 
 export const registerUser = onRequest(
   httpsOptions,
-  withHttpRateLimit("registerUser", registerUserHandler)
+  httpEndpoint("registerUser", ["POST"], registerUserHandler)
 );
 export const createActivationCode = onRequest(
   httpsOptions,
-  withHttpRateLimit("createActivationCode", createActivationCodeHandler)
+  httpEndpoint("createActivationCode", ["POST"], createActivationCodeHandler)
 );
 export const getCurrentUser = onRequest(
   httpsOptions,
-  withHttpRateLimit("getCurrentUser", getCurrentUserHandler)
+  httpEndpoint("getCurrentUser", ["GET"], getCurrentUserHandler)
 );
 export const logoutUser = onRequest(
   httpsOptions,
-  withHttpRateLimit("logoutUser", logoutUserHandler)
+  httpEndpoint("logoutUser", ["POST"], logoutUserHandler)
 );
 export const setUserRole = onRequest(
   httpsOptions,
-  withHttpRateLimit("setUserRole", setUserRoleHandler)
+  httpEndpoint("setUserRole", ["POST"], setUserRoleHandler)
 );
 export const getUserRole = onRequest(
   httpsOptions,
-  withHttpRateLimit("getUserRole", getUserRoleHandler)
+  httpEndpoint("getUserRole", ["GET"], getUserRoleHandler)
 );
 export const listPendingUsers = onRequest(
   httpsOptions,
-  withHttpRateLimit("listPendingUsers", listPendingUsersHandler)
+  httpEndpoint("listPendingUsers", ["GET"], listPendingUsersHandler)
 );
 
 // ============ FIRESTORE ENDPOINTS ============
 
 export const createItem = onRequest(
   httpsOptions,
-  withHttpRateLimit("createItem", createItemHandler)
+  httpEndpoint("createItem", ["POST"], createItemHandler)
 );
 export const getAllItems = onRequest(
   httpsOptions,
-  withHttpRateLimit("getAllItems", getAllItemsHandler)
+  httpEndpoint("getAllItems", ["GET"], getAllItemsHandler)
 );
 export const getItemById = onRequest(
   httpsOptions,
-  withHttpRateLimit("getItemById", getItemByIdHandler)
+  httpEndpoint("getItemById", ["GET"], getItemByIdHandler)
 );
 export const updateItem = onRequest(
   httpsOptions,
-  withHttpRateLimit("updateItem", updateItemHandler)
+  httpEndpoint("updateItem", ["PATCH"], updateItemHandler)
 );
 export const deleteItem = onRequest(
   httpsOptions,
-  withHttpRateLimit("deleteItem", deleteItemHandler)
+  httpEndpoint("deleteItem", ["DELETE"], deleteItemHandler)
 );
 
 // ============ FIRESTORE CALLABLE FUNCTIONS ============
@@ -143,17 +168,17 @@ export const deleteItemCall = onCall(
 
 export const uploadFile = onRequest(
   httpsOptions,
-  withHttpRateLimit("uploadFile", uploadFileHandler)
+  httpEndpoint("uploadFile", ["POST"], uploadFileHandler)
 );
 export const downloadFile = onRequest(
   httpsOptions,
-  withHttpRateLimit("downloadFile", downloadFileHandler)
+  httpEndpoint("downloadFile", ["GET"], downloadFileHandler)
 );
 export const listFiles = onRequest(
   httpsOptions,
-  withHttpRateLimit("listFiles", listFilesHandler)
+  httpEndpoint("listFiles", ["GET"], listFilesHandler)
 );
 export const deleteFileEndpoint = onRequest(
   httpsOptions,
-  withHttpRateLimit("deleteFile", deleteFileHandler)
+  httpEndpoint("deleteFile", ["DELETE"], deleteFileHandler)
 );

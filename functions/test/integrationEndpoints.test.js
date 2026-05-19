@@ -202,6 +202,16 @@ test("HTTP functions expose rate limit headers", async () => {
   assert.ok(response.headers.get("x-ratelimit-reset"));
 });
 
+test("HTTP functions reject unsupported methods", async () => {
+  const response = await request("/getAllItems", {
+    method: "POST",
+  });
+
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET");
+  assert.equal(response.body.error, "Method POST not allowed");
+});
+
 test("protected endpoints enforce owner and admin auth", async () => {
   const userEmail = uniqueEmail("integration-user");
   const otherEmail = uniqueEmail("integration-other");
@@ -312,14 +322,14 @@ test("protected endpoints enforce owner and admin auth", async () => {
   assert.equal(adminReadResponse.body.ownerId, user.uid);
 
   const crossUserUpdateResponse = await request(`/updateItem?id=${itemId}`, {
-    method: "PUT",
+    method: "PATCH",
     headers: authHeaders(otherToken, {"Content-Type": "application/json"}),
     body: JSON.stringify({done: true}),
   });
   assert.equal(crossUserUpdateResponse.status, 404);
 
   const adminUpdateResponse = await request(`/updateItem?id=${itemId}`, {
-    method: "PUT",
+    method: "PATCH",
     headers: authHeaders(adminToken, {"Content-Type": "application/json"}),
     body: JSON.stringify({
       name: "Updated by admin",
@@ -332,7 +342,7 @@ test("protected endpoints enforce owner and admin auth", async () => {
   assert.equal(adminUpdateResponse.body.ownerId, user.uid);
 
   const invalidUpdateResponse = await request(`/updateItem?id=${itemId}`, {
-    method: "PUT",
+    method: "PATCH",
     headers: authHeaders(adminToken, {"Content-Type": "application/json"}),
     body: JSON.stringify({ownerId: admin.uid}),
   });

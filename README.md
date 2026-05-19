@@ -25,6 +25,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **CORS configurado**: orígenes permitidos definidos para HTTP y `onCall`.
 - ✅ **Logs estructurados**: operaciones exitosas y errores registran metadata segura.
 - ✅ **Rate limiting distribuido**: límite por cliente y función usando Firestore.
+- ✅ **Validación de métodos HTTP**: cada endpoint rechaza verbos no permitidos con `405`.
 - ✅ **App Check en callable**: funciones `onCall` exigen token de App Check válido.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
@@ -428,6 +429,8 @@ Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase A
 
 Los endpoints validan `body`, `query params` y nombres de archivo con schemas antes de ejecutar la lógica de negocio. Si el request no cumple el schema, responde `400 Invalid request data`.
 
+También validan el verbo HTTP esperado antes de ejecutar la lógica del endpoint. Si un endpoint recibe un método no permitido, responde `405 Method Not Allowed` y el header `Allow` indica los métodos válidos.
+
 Este es un tercer nivel de seguridad: el usuario debe estar autenticado, estar activo, ser propietario del recurso o tener rol `admin`.
 
 ### Tests de Reglas
@@ -473,6 +476,7 @@ Escenarios cubiertos:
 - Asignación de roles con `setUserRole`.
 - Login contra Auth Emulator para obtener ID tokens.
 - Bloqueo de endpoints protegidos sin token.
+- Bloqueo de métodos HTTP no permitidos con `405`.
 - Bloqueo de requests con campos no permitidos.
 - Acceso de owner, bloqueo cross-user y acceso admin en Firestore.
 - Acceso de owner, bloqueo cross-user y acceso admin en Storage.
