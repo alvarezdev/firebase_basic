@@ -32,7 +32,7 @@ export async function createItem(itemData: ItemData): Promise<ItemRecord> {
  * @param {string | undefined} ownerId Optional owner filter.
  * @return {Promise<number>} Total item count.
  */
-export async function countItems(ownerId?: string) {
+export async function countItems(ownerId?: string): Promise<number> {
   const itemsQuery = ownerId ?
     itemsCollection.where("ownerId", "==", ownerId) :
     itemsCollection;
@@ -53,7 +53,7 @@ export async function listItems(
   limit: number,
   offset: number,
   ownerId?: string
-) {
+): Promise<ItemRecord[]> {
   const itemsQuery = ownerId ?
     itemsCollection.where("ownerId", "==", ownerId) :
     itemsCollection;
@@ -75,7 +75,9 @@ export async function listItems(
  * @param {string} itemId Firestore document ID.
  * @return {Promise<ItemRecord | null>} Item record or null.
  */
-export async function findItemById(itemId: string) {
+export async function findItemById(
+  itemId: string
+): Promise<ItemRecord | null> {
   const doc = await itemsCollection.doc(itemId).get();
 
   if (!doc.exists) {
@@ -97,7 +99,7 @@ export async function findItemById(itemId: string) {
 export async function updateItem(
   itemId: string,
   updateData: UpdateItemInput
-) {
+): Promise<void> {
   await itemsCollection.doc(itemId).update(updateData);
 }
 
@@ -106,6 +108,6 @@ export async function updateItem(
  *
  * @param {string} itemId Firestore document ID.
  */
-export async function deleteItem(itemId: string) {
+export async function deleteItem(itemId: string): Promise<void> {
   await itemsCollection.doc(itemId).delete();
 }

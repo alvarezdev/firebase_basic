@@ -19,7 +19,9 @@ const activationCodesCollection = db.collection("activationCodes");
  * @param {string} code Normalized activation code.
  * @return {Promise<ActivationCodeRecord | null>} Activation code data.
  */
-export async function findActivationCodeByCode(code: string) {
+export async function findActivationCodeByCode(
+  code: string
+): Promise<ActivationCodeRecord | null> {
   const snapshot = await activationCodesCollection.doc(code).get();
 
   if (!snapshot.exists) {
@@ -83,7 +85,9 @@ export async function consumeActivationCode(
  *
  * @param {ActivationCodeRecord} data Activation code data.
  */
-export async function createActivationCode(data: ActivationCodeRecord) {
+export async function createActivationCode(
+  data: ActivationCodeRecord
+): Promise<void> {
   await activationCodesCollection.doc(data.code).set({
     code: data.code,
     email: data.email,

@@ -22,6 +22,55 @@ import type {
 
 const emulatorPaymentSecret = "demo-payment-secret";
 
+export type RegisterUserResponse = {
+  uid: string;
+  email?: string;
+  displayName: string | null;
+  emailVerified: boolean;
+  disabled: boolean;
+  role: UserRole;
+  status: UserStatus;
+};
+
+export type CurrentUserResponse = {
+  uid: string;
+  email?: string;
+  displayName: string | null;
+  emailVerified: boolean;
+  disabled: boolean;
+  role: unknown;
+};
+
+export type SetUserRoleResponse = {
+  message: string;
+  uid: string;
+  role: "user" | "admin";
+};
+
+export type UserRoleResponse = {
+  uid: string;
+  email?: string;
+  role: unknown;
+};
+
+export type ActivationCodeResponse = {
+  code: string;
+  email: string | null;
+  role: "admin";
+  used: false;
+  expiresAt: string;
+};
+
+export type PendingUsersResponse = {
+  count: number;
+  users: userProfileRepository.PendingUserProfile[];
+};
+
+export type LogoutUserResponse = {
+  message: string;
+  uid: string;
+};
+
 /**
  * Normalize an activation code for storage and lookup.
  *
@@ -123,9 +172,11 @@ async function consumeActivationCode(
  * AUTH - Register a new Firebase Auth user
  *
  * @param {RegisterUserInput} userData User registration data.
- * @return {Promise<object>} Created user metadata.
+ * @return {Promise<RegisterUserResponse>} Created user metadata.
  */
-export async function registerUser(userData: RegisterUserInput) {
+export async function registerUser(
+  userData: RegisterUserInput
+): Promise<RegisterUserResponse> {
   const {email, password, displayName, activationCode} = userData;
 
   if (!email || !password) {
@@ -216,9 +267,11 @@ export async function verifyIdToken(
  * AUTH - Get the current authenticated user from an ID token
  *
  * @param {string | undefined} authorizationHeader Authorization header value.
- * @return {Promise<object>} Authenticated user metadata.
+ * @return {Promise<CurrentUserResponse>} Authenticated user metadata.
  */
-export async function getCurrentUser(authorizationHeader: string | undefined) {
+export async function getCurrentUser(
+  authorizationHeader: string | undefined
+): Promise<CurrentUserResponse> {
   const decodedToken = await verifyIdToken(authorizationHeader);
   const userRecord = await authRepository.findUserById(decodedToken.uid);
 
@@ -237,12 +290,12 @@ export async function getCurrentUser(authorizationHeader: string | undefined) {
  *
  * @param {SetUserRoleInput} roleData User ID and role to assign.
  * @param {string | undefined} approvedBy Admin user ID approving the role.
- * @return {Promise<object>} Updated user role metadata.
+ * @return {Promise<SetUserRoleResponse>} Updated user role metadata.
  */
 export async function setUserRole(
   roleData: SetUserRoleInput,
   approvedBy?: string
-) {
+): Promise<SetUserRoleResponse> {
   const {uid, role} = roleData;
 
   if (!uid || !role) {
@@ -276,9 +329,9 @@ export async function setUserRole(
  * AUTH - Get a Firebase Auth user's assigned role
  *
  * @param {string} uid Firebase Auth user ID.
- * @return {Promise<object>} User role metadata.
+ * @return {Promise<UserRoleResponse>} User role metadata.
  */
-export async function getUserRole(uid: string) {
+export async function getUserRole(uid: string): Promise<UserRoleResponse> {
   if (!uid) {
     throw badRequestError("UID is required");
   }
@@ -297,12 +350,12 @@ export async function getUserRole(uid: string) {
  *
  * @param {CreateActivationCodeInput} data Activation code metadata.
  * @param {string | undefined} paymentSecret Payment webhook secret header.
- * @return {Promise<object>} Created activation code metadata.
+ * @return {Promise<ActivationCodeResponse>} Created activation code metadata.
  */
 export async function createActivationCode(
   data: CreateActivationCodeInput,
   paymentSecret: string | undefined
-) {
+): Promise<ActivationCodeResponse> {
   validatePaymentSecret(paymentSecret);
 
   const email = data.email?.trim().toLowerCase() || null;
@@ -332,9 +385,9 @@ export async function createActivationCode(
 /**
  * AUTH - List users waiting for admin approval
  *
- * @return {Promise<object>} Pending user profiles.
+ * @return {Promise<PendingUsersResponse>} Pending user profiles.
  */
-export async function listPendingUsers() {
+export async function listPendingUsers(): Promise<PendingUsersResponse> {
   const users = await userProfileRepository.listPendingUsers();
 
   return {
@@ -347,9 +400,11 @@ export async function listPendingUsers() {
  * AUTH - Revoke refresh tokens for the current authenticated user
  *
  * @param {string | undefined} authorizationHeader Authorization header value.
- * @return {Promise<object>} Logout confirmation.
+ * @return {Promise<LogoutUserResponse>} Logout confirmation.
  */
-export async function logoutUser(authorizationHeader: string | undefined) {
+export async function logoutUser(
+  authorizationHeader: string | undefined
+): Promise<LogoutUserResponse> {
   const decodedToken = await verifyIdToken(authorizationHeader);
 
   await authRepository.revokeUserRefreshTokens(decodedToken.uid);

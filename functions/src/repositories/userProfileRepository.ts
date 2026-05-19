@@ -30,7 +30,7 @@ const userProfilesCollection = db.collection("users");
  *
  * @param {UserProfileData} data User profile data.
  */
-export async function saveUserProfile(data: UserProfileData) {
+export async function saveUserProfile(data: UserProfileData): Promise<void> {
   await userProfilesCollection.doc(data.uid).set({
     uid: data.uid,
     email: data.email,
@@ -49,7 +49,9 @@ export async function saveUserProfile(data: UserProfileData) {
  *
  * @param {UserProfileData} data User profile data.
  */
-export async function activateUserProfile(data: UserProfileData) {
+export async function activateUserProfile(
+  data: UserProfileData
+): Promise<void> {
   await userProfilesCollection.doc(data.uid).set({
     uid: data.uid,
     email: data.email,

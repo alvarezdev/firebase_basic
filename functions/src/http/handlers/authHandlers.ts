@@ -17,7 +17,10 @@ import {requireAdminAuth, requireAuth, sendErrorResponse} from "../";
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function registerUserHandler(req: Request, res: Response) {
+export async function registerUserHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const body = validateRequest(registerUserSchema, req.body);
     const result = await authService.registerUser(body);
@@ -38,7 +41,7 @@ export async function registerUserHandler(req: Request, res: Response) {
 export async function createActivationCodeHandler(
   req: Request,
   res: Response
-) {
+): Promise<void> {
   try {
     const body = validateRequest(createActivationCodeSchema, req.body);
     const result = await authService.createActivationCode(
@@ -59,7 +62,10 @@ export async function createActivationCodeHandler(
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function getCurrentUserHandler(req: Request, res: Response) {
+export async function getCurrentUserHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const result = await authService.getCurrentUser(req.get("authorization"));
     res.status(200).json(result);
@@ -76,7 +82,10 @@ export async function getCurrentUserHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function logoutUserHandler(req: Request, res: Response) {
+export async function logoutUserHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   try {
     const result = await authService.logoutUser(req.get("authorization"));
     res.status(200).json(result);
@@ -93,7 +102,10 @@ export async function logoutUserHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function setUserRoleHandler(req: Request, res: Response) {
+export async function setUserRoleHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireAdminAuth(req, res);
 
   if (!authUser) {
@@ -118,7 +130,10 @@ export async function setUserRoleHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function getUserRoleHandler(req: Request, res: Response) {
+export async function getUserRoleHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireAuth(req, res);
 
   if (!authUser) {
@@ -155,7 +170,10 @@ export async function getUserRoleHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function listPendingUsersHandler(req: Request, res: Response) {
+export async function listPendingUsersHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireAdminAuth(req, res);
 
   if (!authUser) {

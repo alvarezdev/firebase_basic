@@ -1,6 +1,42 @@
 import {bucket} from "../config/firebase";
 import {isAdminRole} from "../shared";
 
+export type UploadedFileResponse = {
+  message: string;
+  filename: string;
+  path: string;
+  size: unknown;
+  timeCreated: unknown;
+  contentType: unknown;
+  storageUri: string;
+};
+
+export type DownloadFileResponse = {
+  filename: string;
+  path: string;
+  size: unknown;
+  contentType: string;
+  data: Buffer;
+};
+
+export type ListedFileResponse = {
+  name: string;
+  size: unknown;
+  timeCreated: unknown;
+  contentType: unknown;
+};
+
+export type ListFilesResponse = {
+  count: number;
+  files: ListedFileResponse[];
+};
+
+export type DeleteFileResponse = {
+  message: string;
+  filename: string;
+  path: string;
+};
+
 /**
  * Build a user-owned Cloud Storage path.
  *
@@ -8,7 +44,7 @@ import {isAdminRole} from "../shared";
  * @param {string} filename File name provided by the client.
  * @return {string} Storage object path scoped to the user.
  */
-export function getUserFilePath(ownerId: string, filename: string) {
+export function getUserFilePath(ownerId: string, filename: string): string {
   const sanitizedFilename = filename.replace(/^\/+/, "");
   return `users/${ownerId}/${sanitizedFilename}`;
 }
@@ -20,14 +56,14 @@ export function getUserFilePath(ownerId: string, filename: string) {
  * @param {Buffer | string} fileData File content to save.
  * @param {string | undefined} contentType File MIME type.
  * @param {string} ownerId Authenticated user ID.
- * @return {Promise<object>} Uploaded file metadata.
+ * @return {Promise<UploadedFileResponse>} Uploaded file metadata.
  */
 export async function uploadFile(
   filename: string,
   fileData: Buffer | string,
   contentType: string | undefined,
   ownerId: string
-) {
+): Promise<UploadedFileResponse> {
   // Get reference to the file in Cloud Storage
   const filePath = getUserFilePath(ownerId, filename);
   const file = bucket.file(filePath);
@@ -59,13 +95,13 @@ export async function uploadFile(
  * @param {string} filename Name of the file in Cloud Storage.
  * @param {string} ownerId Authenticated user ID.
  * @param {unknown} role Authenticated user role.
- * @return {Promise<object | null>} File data and metadata, or null.
+ * @return {Promise<DownloadFileResponse | null>} File data and metadata.
  */
 export async function downloadFile(
   filename: string,
   ownerId: string,
   role: unknown
-) {
+): Promise<DownloadFileResponse | null> {
   const filePath = isAdminRole(role) ?
     filename :
     getUserFilePath(ownerId, filename);
@@ -98,9 +134,12 @@ export async function downloadFile(
  *
  * @param {string} ownerId Authenticated user ID.
  * @param {unknown} role Authenticated user role.
- * @return {Promise<object>} Files owned by the authenticated user.
+ * @return {Promise<ListFilesResponse>} Files owned by the authenticated user.
  */
-export async function listFiles(ownerId: string, role: unknown) {
+export async function listFiles(
+  ownerId: string,
+  role: unknown
+): Promise<ListFilesResponse> {
   const [files] = await bucket.getFiles({
     prefix: isAdminRole(role) ? "users/" : `users/${ownerId}/`,
   });
@@ -122,13 +161,13 @@ export async function listFiles(ownerId: string, role: unknown) {
  * @param {string} filename Name of the file in Cloud Storage.
  * @param {string} ownerId Authenticated user ID.
  * @param {unknown} role Authenticated user role.
- * @return {Promise<object | null>} Delete confirmation, or null if missing.
+ * @return {Promise<DeleteFileResponse | null>} Delete confirmation, or null.
  */
 export async function deleteFile(
   filename: string,
   ownerId: string,
   role: unknown
-) {
+): Promise<DeleteFileResponse | null> {
   const filePath = isAdminRole(role) ?
     filename :
     getUserFilePath(ownerId, filename);

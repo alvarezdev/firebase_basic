@@ -19,7 +19,10 @@ import {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function uploadFileHandler(req: Request, res: Response) {
+export async function uploadFileHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -62,7 +65,10 @@ export async function uploadFileHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function downloadFileHandler(req: Request, res: Response) {
+export async function downloadFileHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -108,7 +114,10 @@ export async function downloadFileHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function listFilesHandler(req: Request, res: Response) {
+export async function listFilesHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -132,7 +141,10 @@ export async function listFilesHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function deleteFileHandler(req: Request, res: Response) {
+export async function deleteFileHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {

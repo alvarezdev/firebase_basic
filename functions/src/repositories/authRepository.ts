@@ -24,7 +24,7 @@ export async function createUser(
  *
  * @param {string} uid Firebase Auth user ID.
  */
-export async function deleteUser(uid: string) {
+export async function deleteUser(uid: string): Promise<void> {
   await auth.deleteUser(uid);
 }
 
@@ -44,7 +44,7 @@ export async function findUserById(uid: string): Promise<UserRecord> {
  * @param {string} uid Firebase Auth user ID.
  * @param {string} role Application role.
  */
-export async function setRoleClaim(uid: string, role: string) {
+export async function setRoleClaim(uid: string, role: string): Promise<void> {
   await auth.setCustomUserClaims(uid, {role});
 }
 
@@ -63,6 +63,6 @@ export async function verifyToken(token: string): Promise<DecodedIdToken> {
  *
  * @param {string} uid Firebase Auth user ID.
  */
-export async function revokeUserRefreshTokens(uid: string) {
+export async function revokeUserRefreshTokens(uid: string): Promise<void> {
   await auth.revokeRefreshTokens(uid);
 }

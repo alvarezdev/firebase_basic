@@ -17,7 +17,10 @@ import {requireActiveAuth, sendErrorResponse} from "../";
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function createItemHandler(req: Request, res: Response) {
+export async function createItemHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -42,7 +45,10 @@ export async function createItemHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function getAllItemsHandler(req: Request, res: Response) {
+export async function getAllItemsHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -72,7 +78,10 @@ export async function getAllItemsHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function getItemByIdHandler(req: Request, res: Response) {
+export async function getItemByIdHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -113,7 +122,10 @@ export async function getItemByIdHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function updateItemHandler(req: Request, res: Response) {
+export async function updateItemHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {
@@ -156,7 +168,10 @@ export async function updateItemHandler(req: Request, res: Response) {
  * @param {Request} req HTTP request.
  * @param {Response} res HTTP response.
  */
-export async function deleteItemHandler(req: Request, res: Response) {
+export async function deleteItemHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
   const authUser = await requireActiveAuth(req, res);
 
   if (!authUser) {

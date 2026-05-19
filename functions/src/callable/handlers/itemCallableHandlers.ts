@@ -1,6 +1,11 @@
 import {type CallableRequest} from "firebase-functions/v2/https";
 import {firestoreService} from "../../services";
 import {notFoundError} from "../../shared";
+import type {
+  DeleteItemResponse,
+  ItemListResponse,
+} from "../../services/firestoreService";
+import type {ItemRecord} from "../../repositories/itemRepository";
 import {
   createItemSchema,
   itemIdQuerySchema,
@@ -14,11 +19,11 @@ import {requireCallableActiveAuth, throwCallableError} from "../";
  * CALLABLE CREATE - Add a new item to Firestore from client SDKs
  *
  * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<object>} Created item response.
+ * @return {Promise<ItemRecord>} Created item response.
  */
 export async function createItemCallHandler(
   request: CallableRequest<unknown>
-) {
+): Promise<ItemRecord> {
   const authUser = requireCallableActiveAuth(request);
 
   try {
@@ -36,11 +41,11 @@ export async function createItemCallHandler(
  * CALLABLE READ - Get all items with pagination support
  *
  * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<object>} Paginated items response.
+ * @return {Promise<ItemListResponse>} Paginated items response.
  */
 export async function getAllItemsCallHandler(
   request: CallableRequest<unknown>
-) {
+): Promise<ItemListResponse> {
   const authUser = requireCallableActiveAuth(request);
 
   try {
@@ -67,11 +72,11 @@ export async function getAllItemsCallHandler(
  * CALLABLE READ - Get a single item by ID
  *
  * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<object>} Item response.
+ * @return {Promise<ItemRecord>} Item response.
  */
 export async function getItemByIdCallHandler(
   request: CallableRequest<unknown>
-) {
+): Promise<ItemRecord> {
   const authUser = requireCallableActiveAuth(request);
 
   try {
@@ -99,11 +104,11 @@ export async function getItemByIdCallHandler(
  * CALLABLE UPDATE - Update an existing item
  *
  * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<object>} Updated item response.
+ * @return {Promise<ItemRecord>} Updated item response.
  */
 export async function updateItemCallHandler(
   request: CallableRequest<unknown>
-) {
+): Promise<ItemRecord> {
   const authUser = requireCallableActiveAuth(request);
 
   try {
@@ -137,11 +142,11 @@ export async function updateItemCallHandler(
  * CALLABLE DELETE - Delete an item
  *
  * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<object>} Delete confirmation response.
+ * @return {Promise<DeleteItemResponse>} Delete confirmation response.
  */
 export async function deleteItemCallHandler(
   request: CallableRequest<unknown>
-) {
+): Promise<DeleteItemResponse> {
   const authUser = requireCallableActiveAuth(request);
 
   try {
