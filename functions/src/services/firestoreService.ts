@@ -6,7 +6,9 @@ import type {ItemRecord} from "../repositories/itemRepository";
 export type PaginationMetadata = {
   total: number;
   limit: number;
-  offset: number;
+  cursor: string | null;
+  nextCursor: string | null;
+  hasMore: boolean;
   count: number;
 };
 
@@ -43,30 +45,32 @@ export async function createItem(
  * READ - Get all items with pagination support
  *
  * @param {number} limit Maximum number of items to return.
- * @param {number} offset Number of items to skip.
+ * @param {string | undefined} cursor Last item ID from previous page.
  * @param {string} ownerId Authenticated user ID.
  * @param {unknown} role Authenticated user role.
  * @return {Promise<ItemListResponse>} Items and pagination metadata.
  */
 export async function getAllItems(
   limit: number,
-  offset: number,
+  cursor: string | undefined,
   ownerId: string,
   role: unknown
 ): Promise<ItemListResponse> {
   const ownerFilter = isAdminRole(role) ? undefined : ownerId;
-  const [total, items] = await Promise.all([
+  const [total, page] = await Promise.all([
     itemRepository.countItems(ownerFilter),
-    itemRepository.listItems(limit, offset, ownerFilter),
+    itemRepository.listItems(limit, cursor, ownerFilter),
   ]);
 
   return {
-    data: items,
+    data: page.items,
     pagination: {
       total,
       limit,
-      offset,
-      count: items.length,
+      cursor: cursor || null,
+      nextCursor: page.nextCursor,
+      hasMore: page.hasMore,
+      count: page.items.length,
     },
   };
 }

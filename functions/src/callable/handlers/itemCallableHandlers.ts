@@ -63,14 +63,14 @@ export async function getAllItemsCallHandler(
   const authUser = await requireCallableActiveAuth(request);
 
   try {
-    const {limit, offset} = validateRequest(
+    const {limit, cursor} = validateRequest(
       paginationQuerySchema,
       getCallablePayload(request.data) || {}
     );
 
     const result = await firestoreService.getAllItems(
       limit,
-      offset,
+      cursor,
       authUser.uid,
       authUser.role
     );
@@ -82,7 +82,9 @@ export async function getAllItemsCallHandler(
       count: result.pagination.count,
       total: result.pagination.total,
       limit,
-      offset,
+      cursor: cursor || null,
+      nextCursor: result.pagination.nextCursor,
+      hasMore: result.pagination.hasMore,
     });
     return result;
   } catch (error) {

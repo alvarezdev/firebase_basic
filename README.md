@@ -323,7 +323,14 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/createItem \
 Listar items:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10&offset=0" \
+curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Si la respuesta trae `pagination.nextCursor`, se usa ese valor para pedir la siguiente pagina:
+
+```bash
+curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10&cursor=<nextCursor>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -478,6 +485,7 @@ Escenarios cubiertos:
 - Bloqueo de endpoints protegidos sin token.
 - Bloqueo de métodos HTTP no permitidos con `405`.
 - Bloqueo de requests con campos no permitidos.
+- Paginación de items con cursor y `nextCursor`.
 - Acceso de owner, bloqueo cross-user y acceso admin en Firestore.
 - Acceso de owner, bloqueo cross-user y acceso admin en Storage.
 
@@ -498,6 +506,7 @@ Escenarios cubiertos:
 - [x] Actualizar documentos.
 - [x] Borrar documentos.
 - [x] Agregar validación de datos.
+- [x] Agregar paginación por cursor.
 - [ ] Agregar filtros y queries más específicas.
 - [ ] Explorar transacciones.
 

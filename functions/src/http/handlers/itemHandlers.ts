@@ -62,10 +62,10 @@ export async function getAllItemsHandler(
   }
 
   try {
-    const {limit, offset} = validateRequest(paginationQuerySchema, req.query);
+    const {limit, cursor} = validateRequest(paginationQuerySchema, req.query);
     const result = await firestoreService.getAllItems(
       limit,
-      offset,
+      cursor,
       authUser.uid,
       authUser.role
     );
@@ -77,7 +77,9 @@ export async function getAllItemsHandler(
       count: result.pagination.count,
       total: result.pagination.total,
       limit,
-      offset,
+      cursor: cursor || null,
+      nextCursor: result.pagination.nextCursor,
+      hasMore: result.pagination.hasMore,
     });
     res.status(200).json(result);
   } catch (error) {

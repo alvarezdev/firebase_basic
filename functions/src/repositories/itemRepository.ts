@@ -1,3 +1,4 @@
+import {FieldPath} from "firebase-admin/firestore";
 import {db} from "../config/firebase";
 import type {CreateItemInput, UpdateItemInput} from "../validation";
 
@@ -7,6 +8,12 @@ export type ItemData = CreateItemInput & {
 
 export type ItemRecord = ItemData & {
   id: string;
+};
+
+export type ItemPage = {
+  items: ItemRecord[];
+  nextCursor: string | null;
+  hasMore: boolean;
 };
 
 const itemsCollection = db.collection("items");
@@ -45,28 +52,38 @@ export async function countItems(ownerId?: string): Promise<number> {
  * List items with pagination.
  *
  * @param {number} limit Maximum number of items to return.
- * @param {number} offset Number of items to skip.
+ * @param {string | undefined} cursor Last item ID from previous page.
  * @param {string | undefined} ownerId Optional owner filter.
- * @return {Promise<ItemRecord[]>} Paginated items.
+ * @return {Promise<ItemPage>} Paginated items and cursor metadata.
  */
 export async function listItems(
   limit: number,
-  offset: number,
+  cursor?: string,
   ownerId?: string
-): Promise<ItemRecord[]> {
-  const itemsQuery = ownerId ?
+): Promise<ItemPage> {
+  let itemsQuery: FirebaseFirestore.Query = ownerId ?
     itemsCollection.where("ownerId", "==", ownerId) :
     itemsCollection;
-  const snapshot = await itemsQuery
-    .limit(limit + offset)
-    .get();
 
-  return snapshot.docs
-    .slice(offset, offset + limit)
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as ItemRecord[];
+  itemsQuery = itemsQuery.orderBy(FieldPath.documentId());
+
+  if (cursor) {
+    itemsQuery = itemsQuery.startAfter(cursor);
+  }
+
+  const snapshot = await itemsQuery.limit(limit + 1).get();
+  const hasMore = snapshot.docs.length > limit;
+  const pageDocs = snapshot.docs.slice(0, limit);
+  const items = pageDocs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as ItemRecord[];
+
+  return {
+    items,
+    nextCursor: hasMore ? items[items.length - 1]?.id || null : null,
+    hasMore,
+  };
 }
 
 /**

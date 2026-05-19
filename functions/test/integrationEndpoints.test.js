@@ -291,6 +291,17 @@ test("protected endpoints enforce owner and admin auth", async () => {
   assert.equal(createItemResponse.status, 201);
   assert.equal(createItemResponse.body.ownerId, user.uid);
 
+  const secondCreateItemResponse = await request("/createItem", {
+    method: "POST",
+    headers: authHeaders(userToken, {"Content-Type": "application/json"}),
+    body: JSON.stringify({
+      name: "Integration item page 2",
+      done: false,
+    }),
+  });
+  assert.equal(secondCreateItemResponse.status, 201);
+  assert.equal(secondCreateItemResponse.body.ownerId, user.uid);
+
   const invalidCreateResponse = await request("/createItem", {
     method: "POST",
     headers: authHeaders(userToken, {"Content-Type": "application/json"}),
@@ -348,7 +359,7 @@ test("protected endpoints enforce owner and admin auth", async () => {
   });
   assert.equal(invalidUpdateResponse.status, 400);
 
-  const userListResponse = await request("/getAllItems?limit=10&offset=0", {
+  const userListResponse = await request("/getAllItems?limit=10", {
     headers: authHeaders(userToken),
   });
   assert.equal(userListResponse.status, 200);
@@ -356,7 +367,32 @@ test("protected endpoints enforce owner and admin auth", async () => {
     userListResponse.body.data.every((item) => item.ownerId === user.uid)
   );
 
-  const adminListResponse = await request("/getAllItems?limit=10&offset=0", {
+  const firstPageResponse = await request("/getAllItems?limit=1", {
+    headers: authHeaders(userToken),
+  });
+  assert.equal(firstPageResponse.status, 200);
+  assert.equal(firstPageResponse.body.data.length, 1);
+  assert.equal(firstPageResponse.body.pagination.hasMore, true);
+  assert.equal(
+    firstPageResponse.body.pagination.nextCursor,
+    firstPageResponse.body.data[0].id
+  );
+
+  const secondPageResponse = await request(
+    `/getAllItems?limit=10&cursor=${
+      firstPageResponse.body.pagination.nextCursor
+    }`,
+    {headers: authHeaders(userToken)}
+  );
+  assert.equal(secondPageResponse.status, 200);
+  assert.ok(secondPageResponse.body.data.length >= 1);
+  assert.ok(
+    secondPageResponse.body.data.every((item) =>
+      item.id !== firstPageResponse.body.data[0].id
+    )
+  );
+
+  const adminListResponse = await request("/getAllItems?limit=10", {
     headers: authHeaders(adminToken),
   });
   assert.equal(adminListResponse.status, 200);
@@ -389,7 +425,6 @@ test("protected endpoints enforce owner and admin auth", async () => {
 
   const callableList = await callableRequest("/getAllItemsCall", userToken, {
     limit: 10,
-    offset: 0,
   });
   assert.ok(
     callableList.data.some((item) => item.id === callableItem.id)
