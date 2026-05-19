@@ -1,5 +1,6 @@
-import {HttpsError, type CallableRequest} from "firebase-functions/v2/https";
+import {type CallableRequest} from "firebase-functions/v2/https";
 import {firestoreService} from "../../services";
+import {notFoundError} from "../../shared";
 import {
   createItemSchema,
   itemIdQuerySchema,
@@ -24,7 +25,10 @@ export async function createItemCallHandler(
     const body = validateRequest(createItemSchema, request.data);
     return await firestoreService.createItem(body, authUser.uid);
   } catch (error) {
-    throwCallableError(error, "Failed to create item");
+    throwCallableError(error, "Failed to create item", {
+      operation: "createItemCall",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -52,7 +56,10 @@ export async function getAllItemsCallHandler(
       authUser.role
     );
   } catch (error) {
-    throwCallableError(error, "Failed to fetch items");
+    throwCallableError(error, "Failed to fetch items", {
+      operation: "getAllItemsCall",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -76,12 +83,15 @@ export async function getItemByIdCallHandler(
     );
 
     if (!result) {
-      throw new HttpsError("not-found", "Item not found");
+      throw notFoundError("Item not found");
     }
 
     return result;
   } catch (error) {
-    throwCallableError(error, "Failed to fetch item");
+    throwCallableError(error, "Failed to fetch item", {
+      operation: "getItemByIdCall",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -111,12 +121,15 @@ export async function updateItemCallHandler(
     );
 
     if (!result) {
-      throw new HttpsError("not-found", "Item not found");
+      throw notFoundError("Item not found");
     }
 
     return result;
   } catch (error) {
-    throwCallableError(error, "Failed to update item");
+    throwCallableError(error, "Failed to update item", {
+      operation: "updateItemCall",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -140,11 +153,14 @@ export async function deleteItemCallHandler(
     );
 
     if (!result) {
-      throw new HttpsError("not-found", "Item not found");
+      throw notFoundError("Item not found");
     }
 
     return result;
   } catch (error) {
-    throwCallableError(error, "Failed to delete item");
+    throwCallableError(error, "Failed to delete item", {
+      operation: "deleteItemCall",
+      uid: authUser.uid,
+    });
   }
 }

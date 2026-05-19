@@ -58,6 +58,11 @@ firebase_basic/
 │   │   │   ├── firestoreService.ts  # Reglas de negocio para items
 │   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
 │   │   │   └── index.ts             # Export centralizado de servicios
+│   │   ├── shared/
+│   │   │   ├── errors.ts            # Errores comunes y normalización por transporte
+│   │   │   ├── logger.ts            # Logging estructurado
+│   │   │   ├── roles.ts             # Helpers compartidos de roles
+│   │   │   └── index.ts             # Export centralizado de shared
 │   │   ├── storage/
 │   │   │   └── uploadValidation.ts  # Validación de payload y content-type de uploads
 │   │   ├── validation/

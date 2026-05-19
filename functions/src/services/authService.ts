@@ -6,7 +6,14 @@ import {
   authRepository,
   userProfileRepository,
 } from "../repositories";
-import type {UserRole, UserStatus} from "../repositories/userProfileRepository";
+import {
+  authenticationError,
+  authorizationError,
+  badRequestError,
+  isActiveRole,
+} from "../shared";
+import type {AppRole as UserRole} from "../shared";
+import type {UserStatus} from "../repositories/userProfileRepository";
 import type {
   CreateActivationCodeInput,
   RegisterUserInput,
@@ -14,26 +21,6 @@ import type {
 } from "../validation";
 
 const emulatorPaymentSecret = "demo-payment-secret";
-
-/**
- * Check whether a role has admin privileges.
- *
- * @param {unknown} role Role claim from the Firebase ID token.
- * @return {boolean} True when role is admin.
- */
-export function isAdminRole(role: unknown) {
-  return role === "admin";
-}
-
-/**
- * Check whether a role can use protected business resources.
- *
- * @param {unknown} role Role claim from the Firebase ID token.
- * @return {boolean} True when role is user or admin.
- */
-export function isActiveRole(role: unknown) {
-  return role === "user" || role === "admin";
-}
 
 /**
  * Normalize an activation code for storage and lookup.
@@ -75,7 +62,7 @@ function validatePaymentSecret(paymentSecret: string | undefined) {
     (isEmulatorRuntime() ? emulatorPaymentSecret : undefined);
 
   if (!expectedSecret || paymentSecret !== expectedSecret) {
-    throw new Error("Invalid payment webhook secret");
+    throw authorizationError("Invalid payment webhook secret");
   }
 }
 
@@ -94,21 +81,21 @@ async function assertActivationCodeCanBeUsed(
   );
 
   if (!codeData) {
-    throw new Error("Activation code not found");
+    throw badRequestError("Activation code not found");
   }
 
   if (codeData.used) {
-    throw new Error("Activation code already used");
+    throw badRequestError("Activation code already used");
   }
 
   if (codeData.email && codeData.email !== email) {
-    throw new Error("Activation code belongs to another email");
+    throw badRequestError("Activation code belongs to another email");
   }
 
   const expiresAt = codeData.expiresAt;
 
   if (expiresAt && expiresAt.toMillis() <= Date.now()) {
-    throw new Error("Activation code expired");
+    throw badRequestError("Activation code expired");
   }
 }
 
@@ -142,7 +129,7 @@ export async function registerUser(userData: RegisterUserInput) {
   const {email, password, displayName, activationCode} = userData;
 
   if (!email || !password) {
-    throw new Error("Email and password are required");
+    throw badRequestError("Email and password are required");
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -213,13 +200,13 @@ export async function verifyIdToken(
   authorizationHeader: string | undefined
 ): Promise<DecodedIdToken> {
   if (!authorizationHeader) {
-    throw new Error("Authorization header is required");
+    throw authenticationError("Authorization header is required");
   }
 
   const [scheme, token] = authorizationHeader.split(" ");
 
   if (scheme !== "Bearer" || !token) {
-    throw new Error("Authorization header must use Bearer token");
+    throw authenticationError("Authorization header must use Bearer token");
   }
 
   return await authRepository.verifyToken(token);
@@ -259,11 +246,11 @@ export async function setUserRole(
   const {uid, role} = roleData;
 
   if (!uid || !role) {
-    throw new Error("UID and role are required");
+    throw badRequestError("UID and role are required");
   }
 
-  if (role !== "user" && role !== "admin") {
-    throw new Error("Role must be user or admin");
+  if (!isActiveRole(role)) {
+    throw badRequestError("Role must be user or admin");
   }
 
   await authRepository.setRoleClaim(uid, role);
@@ -293,7 +280,7 @@ export async function setUserRole(
  */
 export async function getUserRole(uid: string) {
   if (!uid) {
-    throw new Error("UID is required");
+    throw badRequestError("UID is required");
   }
 
   const userRecord = await authRepository.findUserById(uid);

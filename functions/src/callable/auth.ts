@@ -2,7 +2,12 @@ import {
   HttpsError,
   type CallableRequest,
 } from "firebase-functions/v2/https";
-import {authService} from "../services";
+import {
+  authenticationError,
+  authorizationError,
+  isActiveRole,
+  logWarning,
+} from "../shared";
 
 export type CallableAuthUser = {
   uid: string;
@@ -19,7 +24,13 @@ export function requireCallableAuth(
   request: CallableRequest<unknown>
 ): CallableAuthUser {
   if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Authentication required");
+    const error = authenticationError();
+    logWarning(error.message, {
+      transport: "callable",
+      operation: "requireCallableAuth",
+      callableCode: error.callableCode,
+    });
+    throw new HttpsError(error.callableCode, error.message);
   }
 
   return {
@@ -39,8 +50,15 @@ export function requireCallableActiveAuth(
 ): CallableAuthUser {
   const authUser = requireCallableAuth(request);
 
-  if (!authService.isActiveRole(authUser.role)) {
-    throw new HttpsError("permission-denied", "Active user role required");
+  if (!isActiveRole(authUser.role)) {
+    const error = authorizationError("Active user role required");
+    logWarning(error.message, {
+      transport: "callable",
+      operation: "requireCallableActiveAuth",
+      callableCode: error.callableCode,
+      uid: authUser.uid,
+    });
+    throw new HttpsError(error.callableCode, error.message);
   }
 
   return authUser;

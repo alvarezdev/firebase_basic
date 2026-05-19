@@ -1,14 +1,14 @@
 import {FieldValue} from "firebase-admin/firestore";
 import {db} from "../config/firebase";
+import type {AppRole} from "../shared";
 
-export type UserRole = "pending" | "user" | "admin";
 export type UserStatus = "pending" | "active";
 
 export type UserProfileData = {
   uid: string;
   email: string | null;
   displayName?: string | null;
-  role: UserRole;
+  role: AppRole;
   status: UserStatus;
   activationCode?: string | null;
   approvedBy?: string | null;
@@ -18,7 +18,7 @@ export type PendingUserProfile = {
   uid: string;
   email: string | null;
   displayName: string | null;
-  role: UserRole;
+  role: AppRole;
   status: UserStatus;
   createdAt: string | null;
 };

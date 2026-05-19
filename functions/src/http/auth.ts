@@ -2,6 +2,13 @@ import type {DecodedIdToken} from "firebase-admin/auth";
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import {authService} from "../services";
+import {
+  authenticationError,
+  authorizationError,
+  isActiveRole,
+  isAdminRole,
+} from "../shared";
+import {sendErrorResponse} from "./responses";
 
 /**
  * Require a valid Firebase Auth ID token for HTTP endpoints.
@@ -16,8 +23,14 @@ export async function requireAuth(
 ): Promise<DecodedIdToken | null> {
   try {
     return await authService.verifyIdToken(req.get("authorization"));
-  } catch (error) {
-    res.status(401).json({error: "Authentication required"});
+  } catch {
+    sendErrorResponse(
+      res,
+      authenticationError(),
+      "Authentication required",
+      401,
+      {operation: "requireAuth"}
+    );
     return null;
   }
 }
@@ -39,8 +52,14 @@ export async function requireActiveAuth(
     return null;
   }
 
-  if (!authService.isActiveRole(authUser.role)) {
-    res.status(403).json({error: "Active user role required"});
+  if (!isActiveRole(authUser.role)) {
+    sendErrorResponse(
+      res,
+      authorizationError("Active user role required"),
+      "Active user role required",
+      403,
+      {operation: "requireActiveAuth", uid: authUser.uid}
+    );
     return null;
   }
 
@@ -64,8 +83,14 @@ export async function requireAdminAuth(
     return null;
   }
 
-  if (!authService.isAdminRole(authUser.role)) {
-    res.status(403).json({error: "Admin role required"});
+  if (!isAdminRole(authUser.role)) {
+    sendErrorResponse(
+      res,
+      authorizationError("Admin role required"),
+      "Admin role required",
+      403,
+      {operation: "requireAdminAuth", uid: authUser.uid}
+    );
     return null;
   }
 

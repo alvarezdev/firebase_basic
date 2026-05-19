@@ -1,6 +1,7 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import {storageService} from "../../services";
+import {notFoundError} from "../../shared";
 import {
   filenameQuerySchema,
   uploadFileQuerySchema,
@@ -48,7 +49,10 @@ export async function uploadFileHandler(req: Request, res: Response) {
     );
     res.status(201).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to upload file");
+    sendErrorResponse(res, error, "Failed to upload file", 500, {
+      operation: "uploadFile",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -74,7 +78,13 @@ export async function downloadFileHandler(req: Request, res: Response) {
     );
 
     if (!result) {
-      res.status(404).json({error: "File not found"});
+      sendErrorResponse(
+        res,
+        notFoundError("File not found"),
+        "File not found",
+        404,
+        {operation: "downloadFile", uid: authUser.uid, filename}
+      );
       return;
     }
 
@@ -85,7 +95,10 @@ export async function downloadFileHandler(req: Request, res: Response) {
     );
     res.send(result.data);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to download file");
+    sendErrorResponse(res, error, "Failed to download file", 500, {
+      operation: "downloadFile",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -106,7 +119,10 @@ export async function listFilesHandler(req: Request, res: Response) {
     const result = await storageService.listFiles(authUser.uid, authUser.role);
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to list files");
+    sendErrorResponse(res, error, "Failed to list files", 500, {
+      operation: "listFiles",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -132,12 +148,21 @@ export async function deleteFileHandler(req: Request, res: Response) {
     );
 
     if (!result) {
-      res.status(404).json({error: "File not found"});
+      sendErrorResponse(
+        res,
+        notFoundError("File not found"),
+        "File not found",
+        404,
+        {operation: "deleteFile", uid: authUser.uid, filename}
+      );
       return;
     }
 
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to delete file");
+    sendErrorResponse(res, error, "Failed to delete file", 500, {
+      operation: "deleteFile",
+      uid: authUser.uid,
+    });
   }
 }

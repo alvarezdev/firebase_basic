@@ -1,25 +1,39 @@
 import {HttpsError} from "firebase-functions/v2/https";
-import {isRequestValidationError} from "../validation";
+import {
+  logNormalizedError,
+  logWarning,
+  normalizeError,
+  type LogMetadata,
+} from "../shared";
 
 /**
  * Convert validation and service errors to callable errors.
  *
  * @param {unknown} error Unknown caught error.
  * @param {string} fallbackMessage Fallback error message.
+ * @param {LogMetadata} metadata Safe structured log metadata.
  */
 export function throwCallableError(
   error: unknown,
-  fallbackMessage: string
+  fallbackMessage: string,
+  metadata: LogMetadata = {}
 ): never {
   if (error instanceof HttpsError) {
+    logWarning(error.message, {
+      transport: "callable",
+      callableCode: error.code,
+      ...metadata,
+    });
     throw error;
   }
 
-  if (isRequestValidationError(error)) {
-    throw new HttpsError("invalid-argument", error.message, {
-      details: error.details,
-    });
-  }
+  const normalizedError = normalizeError(error, fallbackMessage);
+  logNormalizedError(normalizedError, {
+    transport: "callable",
+    ...metadata,
+  });
 
-  throw new HttpsError("internal", fallbackMessage);
+  throw new HttpsError(normalizedError.callableCode, normalizedError.message, {
+    details: normalizedError.details,
+  });
 }

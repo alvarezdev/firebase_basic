@@ -1,5 +1,9 @@
 import type {Response} from "express";
-import {isRequestValidationError} from "../validation";
+import {
+  logNormalizedError,
+  normalizeError,
+  type LogMetadata,
+} from "../shared";
 
 /**
  * Send a validation-aware error response.
@@ -8,20 +12,30 @@ import {isRequestValidationError} from "../validation";
  * @param {unknown} error Unknown caught error.
  * @param {string} fallbackMessage Fallback error message.
  * @param {number} statusCode Fallback HTTP status code.
+ * @param {LogMetadata} metadata Safe structured log metadata.
  */
 export function sendErrorResponse(
   res: Response,
   error: unknown,
   fallbackMessage: string,
-  statusCode = 400
+  statusCode = 500,
+  metadata: LogMetadata = {}
 ) {
-  if (isRequestValidationError(error)) {
-    res.status(400).json({
-      error: error.message,
-      details: error.details,
+  const normalizedError = normalizeError(error, fallbackMessage, statusCode);
+  logNormalizedError(normalizedError, {
+    transport: "http",
+    ...metadata,
+  });
+
+  if (normalizedError.details) {
+    res.status(normalizedError.httpStatus).json({
+      error: normalizedError.message,
+      details: normalizedError.details,
     });
     return;
   }
 
-  res.status(statusCode).json({error: fallbackMessage});
+  res.status(normalizedError.httpStatus).json({
+    error: normalizedError.message,
+  });
 }

@@ -1,14 +1,5 @@
 import {bucket} from "../config/firebase";
-
-/**
- * Check whether a user role has admin permissions.
- *
- * @param {unknown} role Role claim from the Firebase ID token.
- * @return {boolean} True when the role is admin.
- */
-function isAdmin(role: unknown) {
-  return role === "admin";
-}
+import {isAdminRole} from "../shared";
 
 /**
  * Build a user-owned Cloud Storage path.
@@ -75,7 +66,7 @@ export async function downloadFile(
   ownerId: string,
   role: unknown
 ) {
-  const filePath = isAdmin(role) ?
+  const filePath = isAdminRole(role) ?
     filename :
     getUserFilePath(ownerId, filename);
   const file = bucket.file(filePath);
@@ -111,7 +102,7 @@ export async function downloadFile(
  */
 export async function listFiles(ownerId: string, role: unknown) {
   const [files] = await bucket.getFiles({
-    prefix: isAdmin(role) ? "users/" : `users/${ownerId}/`,
+    prefix: isAdminRole(role) ? "users/" : `users/${ownerId}/`,
   });
 
   return {
@@ -138,7 +129,7 @@ export async function deleteFile(
   ownerId: string,
   role: unknown
 ) {
-  const filePath = isAdmin(role) ?
+  const filePath = isAdminRole(role) ?
     filename :
     getUserFilePath(ownerId, filename);
   const file = bucket.file(filePath);

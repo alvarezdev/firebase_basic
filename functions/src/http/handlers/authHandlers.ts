@@ -1,6 +1,7 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import {authService} from "../../services";
+import {authorizationError, isAdminRole} from "../../shared";
 import {
   createActivationCodeSchema,
   registerUserSchema,
@@ -22,7 +23,9 @@ export async function registerUserHandler(req: Request, res: Response) {
     const result = await authService.registerUser(body);
     res.status(201).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to register user");
+    sendErrorResponse(res, error, "Failed to register user", 500, {
+      operation: "registerUser",
+    });
   }
 }
 
@@ -44,7 +47,9 @@ export async function createActivationCodeHandler(
     );
     res.status(201).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to create activation code", 403);
+    sendErrorResponse(res, error, "Failed to create activation code", 500, {
+      operation: "createActivationCode",
+    });
   }
 }
 
@@ -59,7 +64,9 @@ export async function getCurrentUserHandler(req: Request, res: Response) {
     const result = await authService.getCurrentUser(req.get("authorization"));
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Authentication required", 401);
+    sendErrorResponse(res, error, "Authentication required", 401, {
+      operation: "getCurrentUser",
+    });
   }
 }
 
@@ -74,7 +81,9 @@ export async function logoutUserHandler(req: Request, res: Response) {
     const result = await authService.logoutUser(req.get("authorization"));
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Authentication required", 401);
+    sendErrorResponse(res, error, "Authentication required", 401, {
+      operation: "logoutUser",
+    });
   }
 }
 
@@ -96,7 +105,10 @@ export async function setUserRoleHandler(req: Request, res: Response) {
     const result = await authService.setUserRole(body, authUser.uid);
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to set user role");
+    sendErrorResponse(res, error, "Failed to set user role", 500, {
+      operation: "setUserRole",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -116,15 +128,24 @@ export async function getUserRoleHandler(req: Request, res: Response) {
   try {
     const {uid} = validateRequest(uidQuerySchema, req.query);
 
-    if (authUser.uid !== uid && !authService.isAdminRole(authUser.role)) {
-      res.status(403).json({error: "Admin role required"});
+    if (authUser.uid !== uid && !isAdminRole(authUser.role)) {
+      sendErrorResponse(
+        res,
+        authorizationError("Admin role required"),
+        "Admin role required",
+        403,
+        {operation: "getUserRole", uid: authUser.uid}
+      );
       return;
     }
 
     const result = await authService.getUserRole(uid);
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to get user role");
+    sendErrorResponse(res, error, "Failed to get user role", 500, {
+      operation: "getUserRole",
+      uid: authUser.uid,
+    });
   }
 }
 
@@ -145,6 +166,9 @@ export async function listPendingUsersHandler(req: Request, res: Response) {
     const result = await authService.listPendingUsers();
     res.status(200).json(result);
   } catch (error) {
-    sendErrorResponse(res, error, "Failed to list pending users");
+    sendErrorResponse(res, error, "Failed to list pending users", 500, {
+      operation: "listPendingUsers",
+      uid: authUser.uid,
+    });
   }
 }

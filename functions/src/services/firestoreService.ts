@@ -1,15 +1,6 @@
 import {itemRepository} from "../repositories";
+import {isAdminRole} from "../shared";
 import type {CreateItemInput, UpdateItemInput} from "../validation";
-
-/**
- * Check whether a user role has admin permissions.
- *
- * @param {unknown} role Role claim from the Firebase ID token.
- * @return {boolean} True when the role is admin.
- */
-function isAdmin(role: unknown) {
-  return role === "admin";
-}
 
 /**
  * CREATE - Add a new item to Firestore
@@ -45,7 +36,7 @@ export async function getAllItems(
   ownerId: string,
   role: unknown
 ) {
-  const ownerFilter = isAdmin(role) ? undefined : ownerId;
+  const ownerFilter = isAdminRole(role) ? undefined : ownerId;
   const [total, items] = await Promise.all([
     itemRepository.countItems(ownerFilter),
     itemRepository.listItems(limit, offset, ownerFilter),
@@ -77,7 +68,7 @@ export async function getItemById(
 ) {
   const item = await itemRepository.findItemById(itemId);
 
-  if (!item || (!isAdmin(role) && item.ownerId !== ownerId)) {
+  if (!item || (!isAdminRole(role) && item.ownerId !== ownerId)) {
     return null;
   }
 
@@ -101,7 +92,7 @@ export async function updateItem(
 ) {
   const item = await itemRepository.findItemById(itemId);
 
-  if (!item || (!isAdmin(role) && item.ownerId !== ownerId)) {
+  if (!item || (!isAdminRole(role) && item.ownerId !== ownerId)) {
     return null;
   }
 
@@ -125,7 +116,7 @@ export async function deleteItem(
 ) {
   const item = await itemRepository.findItemById(itemId);
 
-  if (!item || (!isAdmin(role) && item.ownerId !== ownerId)) {
+  if (!item || (!isAdminRole(role) && item.ownerId !== ownerId)) {
     return null;
   }
 
