@@ -1,7 +1,7 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import {firestoreService} from "../../services";
-import {notFoundError} from "../../shared";
+import {logInfo, notFoundError} from "../../shared";
 import {
   createItemSchema,
   itemIdQuerySchema,
@@ -30,6 +30,12 @@ export async function createItemHandler(
   try {
     const body = validateRequest(createItemSchema, req.body);
     const result = await firestoreService.createItem(body, authUser.uid);
+    logInfo("Item created", {
+      transport: "http",
+      operation: "createItem",
+      uid: authUser.uid,
+      itemId: result.id,
+    });
     res.status(201).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to create item", 500, {
@@ -63,6 +69,16 @@ export async function getAllItemsHandler(
       authUser.uid,
       authUser.role
     );
+    logInfo("Items listed", {
+      transport: "http",
+      operation: "getAllItems",
+      uid: authUser.uid,
+      role: authUser.role,
+      count: result.pagination.count,
+      total: result.pagination.total,
+      limit,
+      offset,
+    });
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to fetch items", 500, {
@@ -107,6 +123,12 @@ export async function getItemByIdHandler(
       return;
     }
 
+    logInfo("Item fetched", {
+      transport: "http",
+      operation: "getItemById",
+      uid: authUser.uid,
+      itemId,
+    });
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to fetch item", 500, {
@@ -153,6 +175,12 @@ export async function updateItemHandler(
       return;
     }
 
+    logInfo("Item updated", {
+      transport: "http",
+      operation: "updateItem",
+      uid: authUser.uid,
+      itemId,
+    });
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to update item", 500, {
@@ -197,6 +225,12 @@ export async function deleteItemHandler(
       return;
     }
 
+    logInfo("Item deleted", {
+      transport: "http",
+      operation: "deleteItem",
+      uid: authUser.uid,
+      itemId,
+    });
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to delete item", 500, {

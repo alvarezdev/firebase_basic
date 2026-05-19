@@ -1,7 +1,7 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import {storageService} from "../../services";
-import {notFoundError} from "../../shared";
+import {logInfo, notFoundError} from "../../shared";
 import {
   filenameQuerySchema,
   uploadFileQuerySchema,
@@ -50,6 +50,15 @@ export async function uploadFileHandler(
       contentType,
       authUser.uid
     );
+    logInfo("File uploaded", {
+      transport: "http",
+      operation: "uploadFile",
+      uid: authUser.uid,
+      filename: result.filename,
+      path: result.path,
+      contentType: result.contentType,
+      size: result.size,
+    });
     res.status(201).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to upload file", 500, {
@@ -94,6 +103,15 @@ export async function downloadFileHandler(
       return;
     }
 
+    logInfo("File downloaded", {
+      transport: "http",
+      operation: "downloadFile",
+      uid: authUser.uid,
+      filename,
+      path: result.path,
+      contentType: result.contentType,
+      size: result.size,
+    });
     res.setHeader("Content-Type", result.contentType);
     res.setHeader(
       "Content-Disposition",
@@ -126,6 +144,13 @@ export async function listFilesHandler(
 
   try {
     const result = await storageService.listFiles(authUser.uid, authUser.role);
+    logInfo("Files listed", {
+      transport: "http",
+      operation: "listFiles",
+      uid: authUser.uid,
+      role: authUser.role,
+      count: result.count,
+    });
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to list files", 500, {
@@ -170,6 +195,13 @@ export async function deleteFileHandler(
       return;
     }
 
+    logInfo("File deleted", {
+      transport: "http",
+      operation: "deleteFile",
+      uid: authUser.uid,
+      filename,
+      path: result.path,
+    });
     res.status(200).json(result);
   } catch (error) {
     sendErrorResponse(res, error, "Failed to delete file", 500, {

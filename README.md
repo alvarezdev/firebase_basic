@@ -22,6 +22,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Funciones callable para apps**: CRUD de Firestore disponible también con `onCall`.
 - ✅ **Región explícita**: Cloud Functions configuradas en `us-central1`.
 - ✅ **CORS configurado**: orígenes permitidos definidos para HTTP y `onCall`.
+- ✅ **Logs estructurados**: operaciones exitosas y errores registran metadata segura.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 

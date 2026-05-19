@@ -1,6 +1,6 @@
 import {type CallableRequest} from "firebase-functions/v2/https";
 import {firestoreService} from "../../services";
-import {notFoundError} from "../../shared";
+import {logInfo, notFoundError} from "../../shared";
 import type {
   DeleteItemResponse,
   ItemListResponse,
@@ -28,7 +28,14 @@ export async function createItemCallHandler(
 
   try {
     const body = validateRequest(createItemSchema, request.data);
-    return await firestoreService.createItem(body, authUser.uid);
+    const result = await firestoreService.createItem(body, authUser.uid);
+    logInfo("Item created", {
+      transport: "callable",
+      operation: "createItemCall",
+      uid: authUser.uid,
+      itemId: result.id,
+    });
+    return result;
   } catch (error) {
     throwCallableError(error, "Failed to create item", {
       operation: "createItemCall",
@@ -54,12 +61,23 @@ export async function getAllItemsCallHandler(
       request.data || {}
     );
 
-    return await firestoreService.getAllItems(
+    const result = await firestoreService.getAllItems(
       limit,
       offset,
       authUser.uid,
       authUser.role
     );
+    logInfo("Items listed", {
+      transport: "callable",
+      operation: "getAllItemsCall",
+      uid: authUser.uid,
+      role: authUser.role,
+      count: result.pagination.count,
+      total: result.pagination.total,
+      limit,
+      offset,
+    });
+    return result;
   } catch (error) {
     throwCallableError(error, "Failed to fetch items", {
       operation: "getAllItemsCall",
@@ -91,6 +109,12 @@ export async function getItemByIdCallHandler(
       throw notFoundError("Item not found");
     }
 
+    logInfo("Item fetched", {
+      transport: "callable",
+      operation: "getItemByIdCall",
+      uid: authUser.uid,
+      itemId,
+    });
     return result;
   } catch (error) {
     throwCallableError(error, "Failed to fetch item", {
@@ -129,6 +153,12 @@ export async function updateItemCallHandler(
       throw notFoundError("Item not found");
     }
 
+    logInfo("Item updated", {
+      transport: "callable",
+      operation: "updateItemCall",
+      uid: authUser.uid,
+      itemId,
+    });
     return result;
   } catch (error) {
     throwCallableError(error, "Failed to update item", {
@@ -161,6 +191,12 @@ export async function deleteItemCallHandler(
       throw notFoundError("Item not found");
     }
 
+    logInfo("Item deleted", {
+      transport: "callable",
+      operation: "deleteItemCall",
+      uid: authUser.uid,
+      itemId,
+    });
     return result;
   } catch (error) {
     throwCallableError(error, "Failed to delete item", {
