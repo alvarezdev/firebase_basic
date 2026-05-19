@@ -23,6 +23,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Región explícita**: Cloud Functions configuradas en `us-central1`.
 - ✅ **CORS configurado**: orígenes permitidos definidos para HTTP y `onCall`.
 - ✅ **Logs estructurados**: operaciones exitosas y errores registran metadata segura.
+- ✅ **Rate limiting básico**: límite en memoria para endpoints HTTP y funciones `onCall`.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -546,6 +547,7 @@ El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
 - Firestore configurado en `southamerica-east1`.
 - Cloud Functions configuradas explícitamente en `us-central1`.
 - CORS permite localhost, 127.0.0.1 y dominios Firebase Hosting del proyecto.
+- Rate limiting básico en memoria: 60 requests por minuto por cliente y función.
 - Runtime de Functions: Node.js 20.
 - Lenguaje: TypeScript.
 

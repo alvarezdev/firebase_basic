@@ -12,6 +12,7 @@ export type AppErrorCode =
   | "bad-request"
   | "not-found"
   | "conflict"
+  | "rate-limit"
   | "internal";
 
 export type NormalizedError = {
@@ -124,6 +125,22 @@ export function conflictError(message: string) {
     message,
     httpStatus: 409,
     callableCode: "failed-precondition",
+    shouldLogAsError: false,
+  });
+}
+
+/**
+ * Create a rate limit error.
+ *
+ * @param {string} message Public error message.
+ * @return {AppError} Application error.
+ */
+export function rateLimitError(message = "Too many requests") {
+  return new AppError({
+    code: "rate-limit",
+    message,
+    httpStatus: 429,
+    callableCode: "resource-exhausted",
     shouldLogAsError: false,
   });
 }

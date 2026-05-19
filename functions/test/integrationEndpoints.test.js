@@ -155,6 +155,15 @@ test("functions expose configured CORS headers", async () => {
   );
 });
 
+test("HTTP functions expose rate limit headers", async () => {
+  const response = await request("/helloHttp");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-ratelimit-limit"), "60");
+  assert.ok(response.headers.get("x-ratelimit-remaining"));
+  assert.ok(response.headers.get("x-ratelimit-reset"));
+});
+
 test("protected endpoints enforce owner and admin auth", async () => {
   const userEmail = uniqueEmail("integration-user");
   const otherEmail = uniqueEmail("integration-other");
