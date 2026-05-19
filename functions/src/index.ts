@@ -1,5 +1,6 @@
 import {setGlobalOptions} from "firebase-functions/v2";
 import {onCall, onRequest} from "firebase-functions/v2/https";
+import {callableOptions, httpsOptions} from "./config/functions";
 import {
   createItemCallHandler,
   deleteItemCallHandler,
@@ -41,47 +42,53 @@ async function getHelloMessage() {
 /**
  * Callable function - invoke directly from client SDK
  */
-export const helloCall = onCall(async () => {
+export const helloCall = onCall(callableOptions, async () => {
   return await getHelloMessage();
 });
 
 /**
  * HTTP function - invoke via HTTP request/response
  */
-export const helloHttp = onRequest(async (req, res) => {
+export const helloHttp = onRequest(httpsOptions, async (req, res) => {
   const result = await getHelloMessage();
   res.json(result);
 });
 
 // ============ AUTH ENDPOINTS ============
 
-export const registerUser = onRequest(registerUserHandler);
-export const createActivationCode = onRequest(createActivationCodeHandler);
-export const getCurrentUser = onRequest(getCurrentUserHandler);
-export const logoutUser = onRequest(logoutUserHandler);
-export const setUserRole = onRequest(setUserRoleHandler);
-export const getUserRole = onRequest(getUserRoleHandler);
-export const listPendingUsers = onRequest(listPendingUsersHandler);
+export const registerUser = onRequest(httpsOptions, registerUserHandler);
+export const createActivationCode = onRequest(
+  httpsOptions,
+  createActivationCodeHandler
+);
+export const getCurrentUser = onRequest(httpsOptions, getCurrentUserHandler);
+export const logoutUser = onRequest(httpsOptions, logoutUserHandler);
+export const setUserRole = onRequest(httpsOptions, setUserRoleHandler);
+export const getUserRole = onRequest(httpsOptions, getUserRoleHandler);
+export const listPendingUsers = onRequest(
+  httpsOptions,
+  listPendingUsersHandler
+);
 
 // ============ FIRESTORE ENDPOINTS ============
 
-export const createItem = onRequest(createItemHandler);
-export const getAllItems = onRequest(getAllItemsHandler);
-export const getItemById = onRequest(getItemByIdHandler);
-export const updateItem = onRequest(updateItemHandler);
-export const deleteItem = onRequest(deleteItemHandler);
+export const createItem = onRequest(httpsOptions, createItemHandler);
+export const getAllItems = onRequest(httpsOptions, getAllItemsHandler);
+export const getItemById = onRequest(httpsOptions, getItemByIdHandler);
+export const updateItem = onRequest(httpsOptions, updateItemHandler);
+export const deleteItem = onRequest(httpsOptions, deleteItemHandler);
 
 // ============ FIRESTORE CALLABLE FUNCTIONS ============
 
-export const createItemCall = onCall(createItemCallHandler);
-export const getAllItemsCall = onCall(getAllItemsCallHandler);
-export const getItemByIdCall = onCall(getItemByIdCallHandler);
-export const updateItemCall = onCall(updateItemCallHandler);
-export const deleteItemCall = onCall(deleteItemCallHandler);
+export const createItemCall = onCall(callableOptions, createItemCallHandler);
+export const getAllItemsCall = onCall(callableOptions, getAllItemsCallHandler);
+export const getItemByIdCall = onCall(callableOptions, getItemByIdCallHandler);
+export const updateItemCall = onCall(callableOptions, updateItemCallHandler);
+export const deleteItemCall = onCall(callableOptions, deleteItemCallHandler);
 
 // ============ STORAGE ENDPOINTS ============
 
-export const uploadFile = onRequest(uploadFileHandler);
-export const downloadFile = onRequest(downloadFileHandler);
-export const listFiles = onRequest(listFilesHandler);
-export const deleteFileEndpoint = onRequest(deleteFileHandler);
+export const uploadFile = onRequest(httpsOptions, uploadFileHandler);
+export const downloadFile = onRequest(httpsOptions, downloadFileHandler);
+export const listFiles = onRequest(httpsOptions, listFilesHandler);
+export const deleteFileEndpoint = onRequest(httpsOptions, deleteFileHandler);

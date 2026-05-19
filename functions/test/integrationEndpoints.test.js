@@ -31,6 +31,7 @@ async function request(path, options = {}) {
 
   return {
     status: response.status,
+    headers: response.headers,
     body,
   };
 }
@@ -122,6 +123,37 @@ function authHeaders(token, extraHeaders = {}) {
     ...extraHeaders,
   };
 }
+
+test("functions expose configured CORS headers", async () => {
+  const allowedOrigin = "http://localhost:5173";
+  const allowedHttpHeaders = new Headers();
+  allowedHttpHeaders.set("Origin", allowedOrigin);
+  allowedHttpHeaders.set("Access-Control-Request-Method", "GET");
+
+  const allowedCallableHeaders = new Headers();
+  allowedCallableHeaders.set("Origin", allowedOrigin);
+  allowedCallableHeaders.set("Access-Control-Request-Method", "POST");
+
+  const allowedHttpResponse = await request("/helloHttp", {
+    method: "OPTIONS",
+    headers: allowedHttpHeaders,
+  });
+  assert.equal(allowedHttpResponse.status, 204);
+  assert.equal(
+    allowedHttpResponse.headers.get("access-control-allow-origin"),
+    allowedOrigin
+  );
+
+  const allowedCallableResponse = await request("/helloCall", {
+    method: "OPTIONS",
+    headers: allowedCallableHeaders,
+  });
+  assert.equal(allowedCallableResponse.status, 204);
+  assert.equal(
+    allowedCallableResponse.headers.get("access-control-allow-origin"),
+    allowedOrigin
+  );
+});
 
 test("protected endpoints enforce owner and admin auth", async () => {
   const userEmail = uniqueEmail("integration-user");

@@ -21,6 +21,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Validación de inputs**: schemas con Zod para Auth, Firestore, Storage y query params.
 - ✅ **Funciones callable para apps**: CRUD de Firestore disponible también con `onCall`.
 - ✅ **Región explícita**: Cloud Functions configuradas en `us-central1`.
+- ✅ **CORS configurado**: orígenes permitidos definidos para HTTP y `onCall`.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -38,7 +39,8 @@ firebase_basic/
 │   │   │   ├── errors.ts            # Conversión de errores para onCall
 │   │   │   └── index.ts             # Export centralizado de helpers callable
 │   │   ├── config/
-│   │   │   └── firebase.ts          # Inicialización de Firebase Admin SDK
+│   │   │   ├── firebase.ts          # Inicialización de Firebase Admin SDK
+│   │   │   └── functions.ts         # Opciones compartidas de Functions y CORS
 │   │   ├── http/
 │   │   │   ├── handlers/
 │   │   │   │   ├── authHandlers.ts   # Handlers HTTP de Authentication
@@ -542,6 +544,7 @@ El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
 - Proyecto Firebase predeterminado: `guarderia-dev`.
 - Firestore configurado en `southamerica-east1`.
 - Cloud Functions configuradas explícitamente en `us-central1`.
+- CORS permite localhost, 127.0.0.1 y dominios Firebase Hosting del proyecto.
 - Runtime de Functions: Node.js 20.
 - Lenguaje: TypeScript.
 
