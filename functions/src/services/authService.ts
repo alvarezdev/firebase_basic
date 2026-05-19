@@ -1,4 +1,4 @@
-import {randomBytes} from "crypto";
+import {createHash, randomBytes} from "crypto";
 import {DecodedIdToken} from "firebase-admin/auth";
 import {Timestamp} from "firebase-admin/firestore";
 import {
@@ -54,7 +54,7 @@ export type UserRoleResponse = {
 };
 
 export type ActivationCodeResponse = {
-  code: string;
+  code?: string;
   email: string | null;
   role: "admin";
   used: false;
@@ -82,12 +82,22 @@ function normalizeActivationCode(code: string) {
 }
 
 /**
+ * Hash an activation code before using it as Firestore data.
+ *
+ * @param {string} code Normalized activation code.
+ * @return {string} SHA-256 activation code hash.
+ */
+function hashActivationCode(code: string) {
+  return createHash("sha256").update(code).digest("hex");
+}
+
+/**
  * Generate a human-readable subscription activation code.
  *
  * @return {string} Activation code.
  */
 function generateActivationCode() {
-  return `SUB-${randomBytes(6).toString("hex").toUpperCase()}`;
+  return `SUB-${randomBytes(16).toString("hex").toUpperCase()}`;
 }
 
 /**
@@ -116,6 +126,16 @@ function validatePaymentSecret(paymentSecret: string | undefined) {
 }
 
 /**
+ * Decide if the raw code can be returned for local manual testing.
+ *
+ * @return {boolean} True when local testing can expose the code.
+ */
+function shouldExposeActivationCode() {
+  return isEmulatorRuntime() ||
+    process.env.EXPOSE_ACTIVATION_CODES === "true";
+}
+
+/**
  * Validate a code before creating the Firebase Auth user.
  *
  * @param {string} activationCode Activation code provided by the client.
@@ -125,9 +145,10 @@ async function assertActivationCodeCanBeUsed(
   activationCode: string,
   email: string
 ) {
-  const codeData = await activationCodeRepository.findActivationCodeByCode(
-    normalizeActivationCode(activationCode)
-  );
+  const normalizedCode = normalizeActivationCode(activationCode);
+  const codeHash = hashActivationCode(normalizedCode);
+  const codeData = await activationCodeRepository
+    .findActivationCodeByHash(codeHash);
 
   if (!codeData) {
     throw badRequestError("Activation code not found");
@@ -161,8 +182,10 @@ async function consumeActivationCode(
   uid: string,
   email: string
 ): Promise<UserRole> {
+  const normalizedCode = normalizeActivationCode(activationCode);
+
   return await activationCodeRepository.consumeActivationCode(
-    normalizeActivationCode(activationCode),
+    hashActivationCode(normalizedCode),
     uid,
     email
   );
@@ -219,8 +242,8 @@ export async function registerUser(
       displayName,
       role,
       status,
-      activationCode: activationCode ?
-        normalizeActivationCode(activationCode) :
+      activationCodeHash: activationCode ?
+        hashActivationCode(normalizeActivationCode(activationCode)) :
         undefined,
     });
   } catch (error) {
@@ -364,22 +387,28 @@ export async function createActivationCode(
     Date.now() + expiresInHours * 60 * 60 * 1000
   );
   const code = generateActivationCode();
+  const codeHash = hashActivationCode(code);
 
   await activationCodeRepository.createActivationCode({
-    code,
+    codeHash,
     email,
     role: "admin",
     used: false,
     expiresAt,
   });
 
-  return {
-    code,
+  const response: ActivationCodeResponse = {
     email,
     role: "admin",
     used: false,
     expiresAt: expiresAt.toDate().toISOString(),
   };
+
+  if (shouldExposeActivationCode()) {
+    response.code = code;
+  }
+
+  return response;
 }
 
 /**

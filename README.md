@@ -17,6 +17,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
 - ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
 - ✅ **Activación de administradores**: código de suscripción simulado para crear usuarios `admin`.
+- ✅ **Códigos de activación protegidos**: códigos más fuertes y guardados como hash en Firestore.
 - ✅ **Aprobación de usuarios**: usuarios normales quedan `pending` hasta aprobación admin.
 - ✅ **Validación de inputs**: schemas con Zod para Auth, Firestore, Storage y query params.
 - ✅ **Funciones callable para apps**: CRUD de Firestore disponible también con `onCall`.
@@ -213,6 +214,7 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
 ```
 
 El código solo se puede usar una vez. En emuladores se acepta `demo-payment-secret`; en producción debe configurarse `PAYMENT_WEBHOOK_SECRET`.
+Para facilitar las pruebas locales, el emulador devuelve el código en la respuesta. En producción, el backend guarda solo el hash del código y el código real debería enviarse por email.
 
 Login con el Auth Emulator:
 
@@ -420,7 +422,7 @@ Para crear o actualizar archivos desde clientes directos, Storage Rules exige ru
 
 Los endpoints HTTP también aplican esta restricción aunque usen Firebase Admin SDK: usuarios normales solo pueden enviar `filename`, y admins solo pueden usar rutas completas con forma `users/{uid}/{filename}`.
 
-Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{code}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
+Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{codeHash}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
 
 Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`. Si el usuario existe pero sigue `pending`, responde `403 Forbidden`.
 
@@ -463,6 +465,7 @@ Escenarios cubiertos:
 
 - Registro de usuarios desde `registerUser`.
 - Generación de código admin desde `createActivationCode`.
+- Almacenamiento de códigos de activación como hash, sin guardar el código crudo.
 - Registro de admin con código de activación.
 - Bloqueo de reutilización de códigos de activación.
 - Bloqueo de usuarios `pending` antes de aprobación.
@@ -518,6 +521,7 @@ Escenarios cubiertos:
 - [x] Asignación básica de roles con custom claims.
 - [x] Aplicar rol admin a Firestore y Storage.
 - [x] Crear flujo de activación admin con código de suscripción.
+- [x] Guardar códigos de activación como hash.
 - [x] Crear perfiles `users/{uid}` con estado `pending` o `active`.
 - [x] Proteger asignación de roles para uso exclusivo de admin.
 - [x] Validar requests con schemas antes de ejecutar servicios.

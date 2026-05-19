@@ -9,7 +9,7 @@ const emailSchema = z.string()
 const activationCodeSchema = z.string()
   .trim()
   .toUpperCase()
-  .regex(/^SUB-[A-F0-9]{12}$/);
+  .regex(/^SUB-[A-F0-9]{32}$/);
 
 const uidSchema = z.string()
   .trim()

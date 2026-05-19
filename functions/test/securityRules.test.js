@@ -82,8 +82,8 @@ test.beforeEach(async () => {
       status: "pending",
     });
 
-    await setDoc(doc(firestore, "activationCodes/SUB-TEST"), {
-      code: "SUB-TEST",
+    await setDoc(doc(firestore, "activationCodes/test-code-hash"), {
+      codeHash: "test-code-hash",
       role: "admin",
       used: false,
     });

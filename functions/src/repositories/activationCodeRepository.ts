@@ -4,7 +4,7 @@ import {badRequestError} from "../shared";
 import type {AppRole} from "../shared";
 
 export type ActivationCodeRecord = {
-  code: string;
+  codeHash: string;
   email: string | null;
   role: AppRole;
   used: boolean;
@@ -14,15 +14,15 @@ export type ActivationCodeRecord = {
 const activationCodesCollection = db.collection("activationCodes");
 
 /**
- * Find an activation code by its normalized code value.
+ * Find an activation code by its hash.
  *
- * @param {string} code Normalized activation code.
+ * @param {string} codeHash Hashed activation code.
  * @return {Promise<ActivationCodeRecord | null>} Activation code data.
  */
-export async function findActivationCodeByCode(
-  code: string
+export async function findActivationCodeByHash(
+  codeHash: string
 ): Promise<ActivationCodeRecord | null> {
-  const snapshot = await activationCodesCollection.doc(code).get();
+  const snapshot = await activationCodesCollection.doc(codeHash).get();
 
   if (!snapshot.exists) {
     return null;
@@ -34,17 +34,17 @@ export async function findActivationCodeByCode(
 /**
  * Consume an activation code atomically.
  *
- * @param {string} code Normalized activation code.
+ * @param {string} codeHash Hashed activation code.
  * @param {string} uid Firebase Auth user ID.
  * @param {string} email Email used during registration.
  * @return {Promise<UserRole>} Role associated with the code.
  */
 export async function consumeActivationCode(
-  code: string,
+  codeHash: string,
   uid: string,
   email: string
 ): Promise<AppRole> {
-  const codeRef = activationCodesCollection.doc(code);
+  const codeRef = activationCodesCollection.doc(codeHash);
 
   return await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(codeRef);
@@ -88,8 +88,8 @@ export async function consumeActivationCode(
 export async function createActivationCode(
   data: ActivationCodeRecord
 ): Promise<void> {
-  await activationCodesCollection.doc(data.code).set({
-    code: data.code,
+  await activationCodesCollection.doc(data.codeHash).set({
+    codeHash: data.codeHash,
     email: data.email,
     role: data.role,
     used: data.used,

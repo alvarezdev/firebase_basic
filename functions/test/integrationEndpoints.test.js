@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-var-requires, require-jsdoc */
 
 const assert = require("node:assert/strict");
+const {createHash} = require("node:crypto");
 const test = require("node:test");
+const admin = require("firebase-admin");
 
 const projectId = "guarderia-dev";
 const functionsBaseUrl =
@@ -13,6 +15,12 @@ const appCheckToken = fakeJwt({
   aud: projectId,
   iss: "firebase-app-check-emulator",
 });
+
+if (!admin.apps.length) {
+  admin.initializeApp({projectId});
+}
+
+const firestore = admin.firestore();
 
 function uniqueEmail(prefix) {
   return `${prefix}-${Date.now()}-${Math.random()
@@ -71,6 +79,20 @@ async function createActivationCode(email) {
   assert.equal(response.body.email, email);
   assert.equal(response.body.role, "admin");
   assert.ok(response.body.code);
+  assert.match(response.body.code, /^SUB-[A-F0-9]{32}$/);
+
+  const codeHash = createHash("sha256")
+    .update(response.body.code)
+    .digest("hex");
+  const codeSnapshot = await firestore
+    .collection("activationCodes")
+    .doc(codeHash)
+    .get();
+  const codeData = codeSnapshot.data();
+
+  assert.equal(codeSnapshot.exists, true);
+  assert.equal(codeData.code, undefined);
+  assert.equal(codeData.codeHash, codeHash);
 
   return response.body.code;
 }

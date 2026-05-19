@@ -10,7 +10,7 @@ export type UserProfileData = {
   displayName?: string | null;
   role: AppRole;
   status: UserStatus;
-  activationCode?: string | null;
+  activationCodeHash?: string | null;
   approvedBy?: string | null;
 };
 
@@ -37,7 +37,7 @@ export async function saveUserProfile(data: UserProfileData): Promise<void> {
     displayName: data.displayName || null,
     role: data.role,
     status: data.status,
-    activationCode: data.activationCode || null,
+    activationCodeHash: data.activationCodeHash || null,
     approvedBy: data.approvedBy || null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
