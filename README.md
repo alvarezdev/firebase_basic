@@ -418,6 +418,8 @@ users/{userId}/{filename}
 
 Para crear o actualizar archivos desde clientes directos, Storage Rules exige ruta plana, tamaño mayor a 0, máximo 5 MB y `contentType` permitido. Las rutas anidadas bajo `users/{uid}/...` quedan bloqueadas por reglas.
 
+Los endpoints HTTP también aplican esta restricción aunque usen Firebase Admin SDK: usuarios normales solo pueden enviar `filename`, y admins solo pueden usar rutas completas con forma `users/{uid}/{filename}`.
+
 Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{code}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
 
 Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`. Si el usuario existe pero sigue `pending`, responde `403 Forbidden`.

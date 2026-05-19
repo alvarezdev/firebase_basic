@@ -1,5 +1,5 @@
 import {bucket} from "../config/firebase";
-import {isAdminRole} from "../shared";
+import {badRequestError, isAdminRole} from "../shared";
 
 export type UploadedFileResponse = {
   message: string;
@@ -37,6 +37,73 @@ export type DeleteFileResponse = {
   path: string;
 };
 
+const safePathSegmentPattern = /^[A-Za-z0-9._-]+$/;
+
+/**
+ * Validate a single safe Storage path segment.
+ *
+ * @param {string} segment Path segment to validate.
+ * @return {boolean} True when the segment is safe.
+ */
+function isSafePathSegment(segment: string): boolean {
+  return segment.length > 0 &&
+    safePathSegmentPattern.test(segment) &&
+    !segment.includes("..");
+}
+
+/**
+ * Ensure regular users only address one file name, not a path.
+ *
+ * @param {string} filename File name provided by the client.
+ */
+function assertSafeFilename(filename: string): void {
+  if (!isSafePathSegment(filename)) {
+    throw badRequestError("Filename must be a single safe file name");
+  }
+}
+
+/**
+ * Ensure admin file access remains scoped to user-owned files.
+ *
+ * @param {string} filePath Storage path provided by an admin.
+ * @return {string} Validated Storage path.
+ */
+function validateAdminFilePath(filePath: string): string {
+  const segments = filePath.split("/");
+  const [root, userId, filename] = segments;
+
+  if (
+    segments.length !== 3 ||
+    root !== "users" ||
+    !isSafePathSegment(userId) ||
+    !isSafePathSegment(filename)
+  ) {
+    throw badRequestError(
+      "Admin storage path must use users/{uid}/{filename}"
+    );
+  }
+
+  return filePath;
+}
+
+/**
+ * Resolve the Storage path allowed for the authenticated role.
+ *
+ * @param {string} filename File name or admin path.
+ * @param {string} ownerId Authenticated user ID.
+ * @param {unknown} role Authenticated user role.
+ * @return {string} Validated Storage path.
+ */
+function resolveFilePath(
+  filename: string,
+  ownerId: string,
+  role: unknown
+): string {
+  return isAdminRole(role) ?
+    validateAdminFilePath(filename) :
+    getUserFilePath(ownerId, filename);
+}
+
 /**
  * Build a user-owned Cloud Storage path.
  *
@@ -45,8 +112,8 @@ export type DeleteFileResponse = {
  * @return {string} Storage object path scoped to the user.
  */
 export function getUserFilePath(ownerId: string, filename: string): string {
-  const sanitizedFilename = filename.replace(/^\/+/, "");
-  return `users/${ownerId}/${sanitizedFilename}`;
+  assertSafeFilename(filename);
+  return `users/${ownerId}/${filename}`;
 }
 
 /**
@@ -102,9 +169,7 @@ export async function downloadFile(
   ownerId: string,
   role: unknown
 ): Promise<DownloadFileResponse | null> {
-  const filePath = isAdminRole(role) ?
-    filename :
-    getUserFilePath(ownerId, filename);
+  const filePath = resolveFilePath(filename, ownerId, role);
   const file = bucket.file(filePath);
 
   // Check if file exists
@@ -168,9 +233,7 @@ export async function deleteFile(
   ownerId: string,
   role: unknown
 ): Promise<DeleteFileResponse | null> {
-  const filePath = isAdminRole(role) ?
-    filename :
-    getUserFilePath(ownerId, filename);
+  const filePath = resolveFilePath(filename, ownerId, role);
   const file = bucket.file(filePath);
 
   // Check if file exists

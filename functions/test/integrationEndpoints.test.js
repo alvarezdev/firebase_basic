@@ -411,4 +411,16 @@ test("protected endpoints enforce owner and admin auth", async () => {
   );
   assert.equal(adminDownloadResponse.status, 200);
   assert.equal(adminDownloadResponse.body, fileContent);
+
+  const adminInvalidPathResponse = await request(
+    `/downloadFile?filename=${filename}`,
+    {headers: authHeaders(adminToken)}
+  );
+  assert.equal(adminInvalidPathResponse.status, 400);
+
+  const ownerNestedPathResponse = await request(
+    "/downloadFile?filename=nested/file.txt",
+    {headers: authHeaders(userToken)}
+  );
+  assert.equal(ownerNestedPathResponse.status, 400);
 });
