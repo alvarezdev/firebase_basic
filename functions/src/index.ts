@@ -1,3 +1,4 @@
+import {setGlobalOptions} from "firebase-functions/v2";
 import {onCall, onRequest} from "firebase-functions/v2/https";
 import {
   createItemCallHandler,
@@ -24,6 +25,10 @@ import {
   updateItemHandler,
   uploadFileHandler,
 } from "./http/handlers";
+
+setGlobalOptions({
+  region: "us-central1",
+});
 
 /**
  * Shared business logic

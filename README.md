@@ -20,6 +20,7 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 - ✅ **Aprobación de usuarios**: usuarios normales quedan `pending` hasta aprobación admin.
 - ✅ **Validación de inputs**: schemas con Zod para Auth, Firestore, Storage y query params.
 - ✅ **Funciones callable para apps**: CRUD de Firestore disponible también con `onCall`.
+- ✅ **Región explícita**: Cloud Functions configuradas en `us-central1`.
 - ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
 - ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
 
@@ -175,7 +176,7 @@ Respuesta:
 }
 ```
 
-> Nota: las funciones no definen una región explícita en el código, por eso usan la región por defecto de Cloud Functions.
+> Nota: las funciones usan región explícita `us-central1`, configurada con `setGlobalOptions` en `functions/src/index.ts`.
 
 ### Authentication
 
@@ -540,7 +541,7 @@ El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
 
 - Proyecto Firebase predeterminado: `guarderia-dev`.
 - Firestore configurado en `southamerica-east1`.
-- Cloud Functions usa la región por defecto mientras no se configure otra en el código.
+- Cloud Functions configuradas explícitamente en `us-central1`.
 - Runtime de Functions: Node.js 20.
 - Lenguaje: TypeScript.
 
