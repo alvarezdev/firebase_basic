@@ -6,7 +6,7 @@ import {sendErrorResponse} from "./responses";
 type HttpHandler = (req: Request, res: Response) => void | Promise<void>;
 
 /**
- * Apply in-memory rate limiting to an HTTP handler.
+ * Apply distributed rate limiting to an HTTP handler.
  *
  * @param {string} operation Operation name.
  * @param {HttpHandler} handler HTTP handler.
@@ -18,7 +18,7 @@ export function withHttpRateLimit(
 ): HttpHandler {
   return async (req, res) => {
     const clientId = getHttpClientId(req);
-    const result = consumeRateLimit({
+    const result = await consumeRateLimit({
       key: `http:${operation}:${clientId}`,
     });
 

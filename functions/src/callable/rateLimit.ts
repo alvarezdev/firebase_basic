@@ -8,7 +8,7 @@ type CallableHandler<T = unknown, R = unknown> =
   (request: CallableRequest<T>) => R | Promise<R>;
 
 /**
- * Apply in-memory rate limiting to a callable handler.
+ * Apply distributed rate limiting to a callable handler.
  *
  * @param {string} operation Operation name.
  * @param {CallableHandler<T, R>} handler Callable handler.
@@ -20,7 +20,7 @@ export function withCallableRateLimit<T = unknown, R = unknown>(
 ): CallableHandler<T, R> {
   return async (request) => {
     const clientId = getCallableClientId(request);
-    const result = consumeRateLimit({
+    const result = await consumeRateLimit({
       key: `callable:${operation}:${clientId}`,
     });
 

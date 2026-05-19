@@ -1,3 +1,7 @@
+import {createHash} from "crypto";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
+import {db} from "../config/firebase";
+
 export type RateLimitConfig = {
   key: string;
   limit?: number;
@@ -19,42 +23,70 @@ type RateLimitBucket = {
 
 const defaultLimit = 60;
 const defaultWindowMs = 60 * 1000;
-const buckets = new Map<string, RateLimitBucket>();
+const rateLimitsCollection = db.collection("rateLimits");
 
 /**
- * Consume one request from an in-memory rate limit bucket.
+ * Consume one request from a distributed Firestore rate limit bucket.
  *
  * @param {RateLimitConfig} config Rate limit configuration.
  * @return {RateLimitResult} Rate limit decision.
  */
-export function consumeRateLimit(config: RateLimitConfig): RateLimitResult {
+export async function consumeRateLimit(
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
   const now = Date.now();
   const limit = config.limit ?? defaultLimit;
   const windowMs = config.windowMs ?? defaultWindowMs;
-  const bucket = buckets.get(config.key);
+  const docRef = rateLimitsCollection.doc(getRateLimitDocumentId(config.key));
 
-  cleanupExpiredBuckets(now);
+  return await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(docRef);
+    const bucket = getBucket(snapshot.data());
 
-  if (!bucket || bucket.resetAt <= now) {
-    const resetAt = now + windowMs;
-    buckets.set(config.key, {count: 1, resetAt});
+    if (!snapshot.exists || bucket.resetAt <= now) {
+      const resetAt = now + windowMs;
+      transaction.set(docRef, {
+        key: config.key,
+        count: 1,
+        resetAt,
+        expiresAt: Timestamp.fromMillis(resetAt + windowMs),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
 
-    return buildResult(true, limit, limit - 1, resetAt, now);
-  }
+      return buildResult(true, limit, limit - 1, resetAt, now);
+    }
 
-  if (bucket.count >= limit) {
-    return buildResult(false, limit, 0, bucket.resetAt, now);
-  }
+    if (bucket.count >= limit) {
+      return buildResult(false, limit, 0, bucket.resetAt, now);
+    }
 
-  bucket.count += 1;
-  return buildResult(true, limit, limit - bucket.count, bucket.resetAt, now);
+    const nextCount = bucket.count + 1;
+    transaction.update(docRef, {
+      count: nextCount,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    return buildResult(true, limit, limit - nextCount, bucket.resetAt, now);
+  });
 }
 
 /**
- * Clear rate limit buckets. Intended for tests.
+ * Clear rate limit buckets. Intended for tests and emulator resets.
  */
-export function clearRateLimitBuckets() {
-  buckets.clear();
+export async function clearRateLimitBuckets(): Promise<void> {
+  const snapshot = await rateLimitsCollection.limit(500).get();
+
+  if (snapshot.empty) {
+    return;
+  }
+
+  const batch = db.batch();
+
+  snapshot.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+
+  await batch.commit();
 }
 
 /**
@@ -84,14 +116,26 @@ function buildResult(
 }
 
 /**
- * Remove expired buckets opportunistically.
+ * Convert Firestore data into a rate limit bucket.
  *
- * @param {number} now Current timestamp in milliseconds.
+ * @param {Record<string, unknown> | undefined} data Firestore data.
+ * @return {RateLimitBucket} Rate limit bucket.
  */
-function cleanupExpiredBuckets(now: number) {
-  for (const [key, bucket] of buckets.entries()) {
-    if (bucket.resetAt <= now) {
-      buckets.delete(key);
-    }
-  }
+function getBucket(
+  data: Record<string, unknown> | undefined
+): RateLimitBucket {
+  return {
+    count: typeof data?.count === "number" ? data.count : 0,
+    resetAt: typeof data?.resetAt === "number" ? data.resetAt : 0,
+  };
+}
+
+/**
+ * Build a safe deterministic document ID from a rate limit key.
+ *
+ * @param {string} key Rate limit key.
+ * @return {string} Firestore document ID.
+ */
+function getRateLimitDocumentId(key: string): string {
+  return createHash("sha256").update(key).digest("hex");
 }
