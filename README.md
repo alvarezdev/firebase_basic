@@ -29,17 +29,35 @@ El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya in
 firebase_basic/
 ├── functions/
 │   ├── src/
+│   │   ├── callable/
+│   │   │   ├── handlers/
+│   │   │   │   ├── itemCallableHandlers.ts # Handlers onCall para Firestore
+│   │   │   │   └── index.ts          # Export centralizado de handlers callable
+│   │   │   ├── auth.ts              # Helpers de autenticación para funciones onCall
+│   │   │   ├── errors.ts            # Conversión de errores para onCall
+│   │   │   └── index.ts             # Export centralizado de helpers callable
 │   │   ├── config/
 │   │   │   └── firebase.ts          # Inicialización de Firebase Admin SDK
+│   │   ├── http/
+│   │   │   ├── handlers/
+│   │   │   │   ├── authHandlers.ts   # Handlers HTTP de Authentication
+│   │   │   │   ├── itemHandlers.ts   # Handlers HTTP de Firestore
+│   │   │   │   ├── storageHandlers.ts # Handlers HTTP de Storage
+│   │   │   │   └── index.ts          # Export centralizado de handlers HTTP
+│   │   │   ├── auth.ts              # Helpers de autenticación para endpoints HTTP
+│   │   │   ├── responses.ts         # Respuestas HTTP de error centralizadas
+│   │   │   └── index.ts             # Export centralizado de helpers HTTP
 │   │   ├── services/
 │   │   │   ├── authService.ts       # Operaciones básicas de Authentication
 │   │   │   ├── firestoreService.ts  # Operaciones CRUD para Firestore
 │   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
 │   │   │   └── index.ts             # Export centralizado de servicios
+│   │   ├── storage/
+│   │   │   └── uploadValidation.ts  # Validación de payload y content-type de uploads
 │   │   ├── validation/
 │   │   │   ├── index.ts             # Helper centralizado de validación
 │   │   │   └── schemas.ts           # Schemas Zod para requests
-│   │   └── index.ts                 # Cloud Functions expuestas
+│   │   └── index.ts                 # Registro de Cloud Functions expuestas
 │   ├── package.json                 # Scripts y dependencias de Functions
 │   ├── test/
 │   │   ├── integrationEndpoints.test.js # Tests HTTP end-to-end con emuladores
