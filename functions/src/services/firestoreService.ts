@@ -1,7 +1,5 @@
-import {db} from "../config/firebase";
+import {itemRepository} from "../repositories";
 import type {CreateItemInput, UpdateItemInput} from "../validation";
-
-const itemsCollection = db.collection("items");
 
 /**
  * Check whether a user role has admin permissions.
@@ -28,11 +26,8 @@ export async function createItem(
     ...itemData,
     ownerId,
   };
-  const docRef = await itemsCollection.add(data);
-  return {
-    id: docRef.id,
-    ...data,
-  };
+
+  return await itemRepository.createItem(data);
 }
 
 /**
@@ -50,26 +45,11 @@ export async function getAllItems(
   ownerId: string,
   role: unknown
 ) {
-  const itemsQuery = isAdmin(role) ?
-    itemsCollection :
-    itemsCollection.where("ownerId", "==", ownerId);
-
-  // Get total count of items
-  const totalSnapshot = await itemsQuery.count().get();
-  const total = totalSnapshot.data().count;
-
-  // Get paginated items
-  const snapshot = await itemsQuery
-    .limit(limit + offset)
-    .get();
-
-  // Apply offset to results
-  const items = snapshot.docs
-    .slice(offset, offset + limit)
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+  const ownerFilter = isAdmin(role) ? undefined : ownerId;
+  const [total, items] = await Promise.all([
+    itemRepository.countItems(ownerFilter),
+    itemRepository.listItems(limit, offset, ownerFilter),
+  ]);
 
   return {
     data: items,
@@ -95,22 +75,13 @@ export async function getItemById(
   ownerId: string,
   role: unknown
 ) {
-  const doc = await itemsCollection.doc(itemId).get();
+  const item = await itemRepository.findItemById(itemId);
 
-  if (!doc.exists) {
+  if (!item || (!isAdmin(role) && item.ownerId !== ownerId)) {
     return null;
   }
 
-  const itemData = doc.data();
-
-  if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
-    return null;
-  }
-
-  return {
-    id: doc.id,
-    ...itemData,
-  };
+  return item;
 }
 
 /**
@@ -128,29 +99,15 @@ export async function updateItem(
   ownerId: string,
   role: unknown
 ) {
-  // Check if document exists
-  const doc = await itemsCollection.doc(itemId).get();
+  const item = await itemRepository.findItemById(itemId);
 
-  if (!doc.exists) {
+  if (!item || (!isAdmin(role) && item.ownerId !== ownerId)) {
     return null;
   }
 
-  const itemData = doc.data();
+  await itemRepository.updateItem(itemId, updateData);
 
-  if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
-    return null;
-  }
-
-  // Update the document
-  await itemsCollection.doc(itemId).update(updateData);
-
-  // Fetch and return the updated document
-  const updatedDoc = await itemsCollection.doc(itemId).get();
-
-  return {
-    id: updatedDoc.id,
-    ...updatedDoc.data(),
-  };
+  return await itemRepository.findItemById(itemId);
 }
 
 /**
@@ -166,21 +123,13 @@ export async function deleteItem(
   ownerId: string,
   role: unknown
 ) {
-  // Check if document exists
-  const doc = await itemsCollection.doc(itemId).get();
+  const item = await itemRepository.findItemById(itemId);
 
-  if (!doc.exists) {
+  if (!item || (!isAdmin(role) && item.ownerId !== ownerId)) {
     return null;
   }
 
-  const itemData = doc.data();
-
-  if (!isAdmin(role) && itemData?.ownerId !== ownerId) {
-    return null;
-  }
-
-  // Delete the document
-  await itemsCollection.doc(itemId).delete();
+  await itemRepository.deleteItem(itemId);
 
   return {
     message: "Item deleted successfully",

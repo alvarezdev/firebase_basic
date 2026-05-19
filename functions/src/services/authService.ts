@@ -1,17 +1,18 @@
 import {randomBytes} from "crypto";
 import {DecodedIdToken} from "firebase-admin/auth";
-import {FieldValue, Timestamp} from "firebase-admin/firestore";
-import {auth, db} from "../config/firebase";
+import {Timestamp} from "firebase-admin/firestore";
+import {
+  activationCodeRepository,
+  authRepository,
+  userProfileRepository,
+} from "../repositories";
+import type {UserRole, UserStatus} from "../repositories/userProfileRepository";
 import type {
   CreateActivationCodeInput,
   RegisterUserInput,
   SetUserRoleInput,
 } from "../validation";
 
-type UserRole = "pending" | "user" | "admin";
-
-const userProfilesCollection = db.collection("users");
-const activationCodesCollection = db.collection("activationCodes");
 const emulatorPaymentSecret = "demo-payment-secret";
 
 /**
@@ -88,26 +89,23 @@ async function assertActivationCodeCanBeUsed(
   activationCode: string,
   email: string
 ) {
-  const codeRef = activationCodesCollection.doc(
+  const codeData = await activationCodeRepository.findActivationCodeByCode(
     normalizeActivationCode(activationCode)
   );
-  const snapshot = await codeRef.get();
 
-  if (!snapshot.exists) {
+  if (!codeData) {
     throw new Error("Activation code not found");
   }
 
-  const codeData = snapshot.data();
-
-  if (codeData?.used) {
+  if (codeData.used) {
     throw new Error("Activation code already used");
   }
 
-  if (codeData?.email && codeData.email !== email) {
+  if (codeData.email && codeData.email !== email) {
     throw new Error("Activation code belongs to another email");
   }
 
-  const expiresAt = codeData?.expiresAt as Timestamp | undefined;
+  const expiresAt = codeData.expiresAt;
 
   if (expiresAt && expiresAt.toMillis() <= Date.now()) {
     throw new Error("Activation code expired");
@@ -127,68 +125,11 @@ async function consumeActivationCode(
   uid: string,
   email: string
 ): Promise<UserRole> {
-  const normalizedCode = normalizeActivationCode(activationCode);
-  const codeRef = activationCodesCollection.doc(normalizedCode);
-
-  return await db.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(codeRef);
-
-    if (!snapshot.exists) {
-      throw new Error("Activation code not found");
-    }
-
-    const codeData = snapshot.data();
-
-    if (codeData?.used) {
-      throw new Error("Activation code already used");
-    }
-
-    if (codeData?.email && codeData.email !== email) {
-      throw new Error("Activation code belongs to another email");
-    }
-
-    const expiresAt = codeData?.expiresAt as Timestamp | undefined;
-
-    if (expiresAt && expiresAt.toMillis() <= Date.now()) {
-      throw new Error("Activation code expired");
-    }
-
-    transaction.update(codeRef, {
-      used: true,
-      usedAt: FieldValue.serverTimestamp(),
-      usedBy: uid,
-      usedByEmail: email,
-    });
-
-    return codeData?.role === "admin" ? "admin" : "user";
-  });
-}
-
-/**
- * Store an application profile for admin screens and authorization state.
- *
- * @param {object} data Profile data.
- */
-async function saveUserProfile(data: {
-  uid: string;
-  email: string;
-  displayName?: string;
-  role: UserRole;
-  status: "pending" | "active";
-  activationCode?: string;
-  approvedBy?: string;
-}) {
-  await userProfilesCollection.doc(data.uid).set({
-    uid: data.uid,
-    email: data.email,
-    displayName: data.displayName || null,
-    role: data.role,
-    status: data.status,
-    activationCode: data.activationCode || null,
-    approvedBy: data.approvedBy || null,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
+  return await activationCodeRepository.consumeActivationCode(
+    normalizeActivationCode(activationCode),
+    uid,
+    email
+  );
 }
 
 /**
@@ -206,7 +147,7 @@ export async function registerUser(userData: RegisterUserInput) {
 
   const normalizedEmail = email.trim().toLowerCase();
   let registeredRole: UserRole = "pending";
-  let registeredStatus: "pending" | "active" = "pending";
+  let registeredStatus: UserStatus = "pending";
 
   if (activationCode) {
     await assertActivationCodeCanBeUsed(activationCode, normalizedEmail);
@@ -215,7 +156,7 @@ export async function registerUser(userData: RegisterUserInput) {
   let userRecord;
 
   try {
-    userRecord = await auth.createUser({
+    userRecord = await authRepository.createUser({
       email: normalizedEmail,
       password,
       displayName,
@@ -230,11 +171,11 @@ export async function registerUser(userData: RegisterUserInput) {
       "pending";
     const status = role === "pending" ? "pending" : "active";
 
-    await auth.setCustomUserClaims(userRecord.uid, {role});
+    await authRepository.setRoleClaim(userRecord.uid, role);
     registeredRole = role;
     registeredStatus = status;
 
-    await saveUserProfile({
+    await userProfileRepository.saveUserProfile({
       uid: userRecord.uid,
       email: normalizedEmail,
       displayName,
@@ -246,7 +187,7 @@ export async function registerUser(userData: RegisterUserInput) {
     });
   } catch (error) {
     if (userRecord) {
-      await auth.deleteUser(userRecord.uid);
+      await authRepository.deleteUser(userRecord.uid);
     }
     throw error;
   }
@@ -281,7 +222,7 @@ export async function verifyIdToken(
     throw new Error("Authorization header must use Bearer token");
   }
 
-  return await auth.verifyIdToken(token);
+  return await authRepository.verifyToken(token);
 }
 
 /**
@@ -292,7 +233,7 @@ export async function verifyIdToken(
  */
 export async function getCurrentUser(authorizationHeader: string | undefined) {
   const decodedToken = await verifyIdToken(authorizationHeader);
-  const userRecord = await auth.getUser(decodedToken.uid);
+  const userRecord = await authRepository.findUserById(decodedToken.uid);
 
   return {
     uid: userRecord.uid,
@@ -325,19 +266,17 @@ export async function setUserRole(
     throw new Error("Role must be user or admin");
   }
 
-  await auth.setCustomUserClaims(uid, {role});
-  const userRecord = await auth.getUser(uid);
+  await authRepository.setRoleClaim(uid, role);
+  const userRecord = await authRepository.findUserById(uid);
 
-  await userProfilesCollection.doc(uid).set({
+  await userProfileRepository.activateUserProfile({
     uid,
     email: userRecord.email || null,
     displayName: userRecord.displayName || null,
     role,
     status: "active",
     approvedBy: approvedBy || null,
-    approvedAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
+  });
 
   return {
     message: "User role updated successfully",
@@ -357,7 +296,7 @@ export async function getUserRole(uid: string) {
     throw new Error("UID is required");
   }
 
-  const userRecord = await auth.getUser(uid);
+  const userRecord = await authRepository.findUserById(uid);
 
   return {
     uid: userRecord.uid,
@@ -386,12 +325,11 @@ export async function createActivationCode(
   );
   const code = generateActivationCode();
 
-  await activationCodesCollection.doc(code).set({
+  await activationCodeRepository.createActivationCode({
     code,
     email,
     role: "admin",
     used: false,
-    createdAt: FieldValue.serverTimestamp(),
     expiresAt,
   });
 
@@ -410,22 +348,7 @@ export async function createActivationCode(
  * @return {Promise<object>} Pending user profiles.
  */
 export async function listPendingUsers() {
-  const snapshot = await userProfilesCollection
-    .where("status", "==", "pending")
-    .get();
-
-  const users = snapshot.docs.map((doc) => {
-    const data = doc.data();
-
-    return {
-      uid: doc.id,
-      email: data.email,
-      displayName: data.displayName,
-      role: data.role,
-      status: data.status,
-      createdAt: data.createdAt?.toDate?.().toISOString?.() || null,
-    };
-  });
+  const users = await userProfileRepository.listPendingUsers();
 
   return {
     count: users.length,
@@ -442,7 +365,7 @@ export async function listPendingUsers() {
 export async function logoutUser(authorizationHeader: string | undefined) {
   const decodedToken = await verifyIdToken(authorizationHeader);
 
-  await auth.revokeRefreshTokens(decodedToken.uid);
+  await authRepository.revokeUserRefreshTokens(decodedToken.uid);
 
   return {
     message: "User logged out successfully",

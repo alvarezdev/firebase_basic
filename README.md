@@ -47,9 +47,15 @@ firebase_basic/
 │   │   │   ├── auth.ts              # Helpers de autenticación para endpoints HTTP
 │   │   │   ├── responses.ts         # Respuestas HTTP de error centralizadas
 │   │   │   └── index.ts             # Export centralizado de helpers HTTP
+│   │   ├── repositories/
+│   │   │   ├── activationCodeRepository.ts # Acceso a códigos de activación
+│   │   │   ├── authRepository.ts     # Acceso directo a Firebase Auth
+│   │   │   ├── itemRepository.ts     # Acceso directo a Firestore para items
+│   │   │   ├── userProfileRepository.ts # Acceso a perfiles users/{uid}
+│   │   │   └── index.ts             # Export centralizado de repositories
 │   │   ├── services/
-│   │   │   ├── authService.ts       # Operaciones básicas de Authentication
-│   │   │   ├── firestoreService.ts  # Operaciones CRUD para Firestore
+│   │   │   ├── authService.ts       # Reglas de negocio de Authentication
+│   │   │   ├── firestoreService.ts  # Reglas de negocio para items
 │   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
 │   │   │   └── index.ts             # Export centralizado de servicios
 │   │   ├── storage/
