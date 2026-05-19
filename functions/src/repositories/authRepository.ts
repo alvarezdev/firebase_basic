@@ -55,7 +55,7 @@ export async function setRoleClaim(uid: string, role: string): Promise<void> {
  * @return {Promise<DecodedIdToken>} Decoded token.
  */
 export async function verifyToken(token: string): Promise<DecodedIdToken> {
-  return await auth.verifyIdToken(token);
+  return await auth.verifyIdToken(token, true);
 }
 
 /**

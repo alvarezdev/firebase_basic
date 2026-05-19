@@ -290,7 +290,7 @@ Funciones callable equivalentes para apps cliente:
 - `deleteItemCall`
 
 En `onRequest` el token llega en el header `Authorization: Bearer <ID_TOKEN>`.
-En `onCall`, el SDK cliente envía el token automáticamente y la función lo recibe en `request.auth`.
+En `onCall`, el SDK cliente envía el token automáticamente y, para este flujo didáctico, también se envía `idToken` dentro de `data` para validar revocación con Firebase Admin.
 
 Los items aceptan únicamente estos campos:
 

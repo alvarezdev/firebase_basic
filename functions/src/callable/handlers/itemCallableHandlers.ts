@@ -13,7 +13,11 @@ import {
   updateItemSchema,
   validateRequest,
 } from "../../validation";
-import {requireCallableActiveAuth, throwCallableError} from "../";
+import {
+  getCallablePayload,
+  requireCallableActiveAuth,
+  throwCallableError,
+} from "../";
 
 /**
  * CALLABLE CREATE - Add a new item to Firestore from client SDKs
@@ -24,10 +28,13 @@ import {requireCallableActiveAuth, throwCallableError} from "../";
 export async function createItemCallHandler(
   request: CallableRequest<unknown>
 ): Promise<ItemRecord> {
-  const authUser = requireCallableActiveAuth(request);
+  const authUser = await requireCallableActiveAuth(request);
 
   try {
-    const body = validateRequest(createItemSchema, request.data);
+    const body = validateRequest(
+      createItemSchema,
+      getCallablePayload(request.data)
+    );
     const result = await firestoreService.createItem(body, authUser.uid);
     logInfo("Item created", {
       transport: "callable",
@@ -53,12 +60,12 @@ export async function createItemCallHandler(
 export async function getAllItemsCallHandler(
   request: CallableRequest<unknown>
 ): Promise<ItemListResponse> {
-  const authUser = requireCallableActiveAuth(request);
+  const authUser = await requireCallableActiveAuth(request);
 
   try {
     const {limit, offset} = validateRequest(
       paginationQuerySchema,
-      request.data || {}
+      getCallablePayload(request.data) || {}
     );
 
     const result = await firestoreService.getAllItems(
@@ -95,10 +102,13 @@ export async function getAllItemsCallHandler(
 export async function getItemByIdCallHandler(
   request: CallableRequest<unknown>
 ): Promise<ItemRecord> {
-  const authUser = requireCallableActiveAuth(request);
+  const authUser = await requireCallableActiveAuth(request);
 
   try {
-    const {id: itemId} = validateRequest(itemIdQuerySchema, request.data);
+    const {id: itemId} = validateRequest(
+      itemIdQuerySchema,
+      getCallablePayload(request.data)
+    );
     const result = await firestoreService.getItemById(
       itemId,
       authUser.uid,
@@ -133,10 +143,12 @@ export async function getItemByIdCallHandler(
 export async function updateItemCallHandler(
   request: CallableRequest<unknown>
 ): Promise<ItemRecord> {
-  const authUser = requireCallableActiveAuth(request);
+  const authUser = await requireCallableActiveAuth(request);
 
   try {
-    const updatePayload = {...request.data as Record<string, unknown>};
+    const updatePayload = {
+      ...getCallablePayload(request.data) as Record<string, unknown>,
+    };
     const {id: itemId} = validateRequest(itemIdQuerySchema, {
       id: updatePayload.id,
     });
@@ -177,10 +189,13 @@ export async function updateItemCallHandler(
 export async function deleteItemCallHandler(
   request: CallableRequest<unknown>
 ): Promise<DeleteItemResponse> {
-  const authUser = requireCallableActiveAuth(request);
+  const authUser = await requireCallableActiveAuth(request);
 
   try {
-    const {id: itemId} = validateRequest(itemIdQuerySchema, request.data);
+    const {id: itemId} = validateRequest(
+      itemIdQuerySchema,
+      getCallablePayload(request.data)
+    );
     const result = await firestoreService.deleteItem(
       itemId,
       authUser.uid,

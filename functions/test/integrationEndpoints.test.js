@@ -40,7 +40,7 @@ async function callableRequest(path, token, data = {}) {
   const response = await request(path, {
     method: "POST",
     headers: authHeaders(token, {"Content-Type": "application/json"}),
-    body: JSON.stringify({data}),
+    body: JSON.stringify({data: {...data, idToken: token}}),
   });
 
   assert.equal(response.status, 200);
