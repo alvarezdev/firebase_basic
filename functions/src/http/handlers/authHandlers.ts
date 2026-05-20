@@ -1,14 +1,14 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import type {AppServices} from "../../dependencies";
-import {authorizationError, isAdminRole, logInfo} from "../../shared";
 import {
   createActivationCodeSchema,
   registerUserSchema,
   setUserRoleSchema,
   uidQuerySchema,
-  validateRequest,
-} from "../../validation";
+} from "../../modules/auth/auth.schemas";
+import {authorizationError, isAdminRole, logInfo} from "../../shared";
+import {validateRequest} from "../../validation";
 import type {HttpAuthGuards} from "../auth";
 import {sendErrorResponse} from "../responses";
 
