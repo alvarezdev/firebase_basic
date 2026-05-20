@@ -1,5 +1,5 @@
 import {type CallableRequest} from "firebase-functions/v2/https";
-import {firestoreService} from "../../services";
+import type {AppServices} from "../../dependencies";
 import {logInfo, notFoundError} from "../../shared";
 import type {
   DeleteItemResponse,
@@ -19,206 +19,231 @@ import {
   throwCallableError,
 } from "../";
 
-/**
- * CALLABLE CREATE - Add a new item to Firestore from client SDKs
- *
- * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<ItemRecord>} Created item response.
- */
-export async function createItemCallHandler(
-  request: CallableRequest<unknown>
-): Promise<ItemRecord> {
-  const authUser = await requireCallableActiveAuth(request);
-
-  try {
-    const body = validateRequest(
-      createItemSchema,
-      getCallablePayload(request.data)
-    );
-    const result = await firestoreService.createItem(body, authUser.uid);
-    logInfo("Item created", {
-      transport: "callable",
-      operation: "createItemCall",
-      uid: authUser.uid,
-      itemId: result.id,
-    });
-    return result;
-  } catch (error) {
-    throwCallableError(error, "Failed to create item", {
-      operation: "createItemCall",
-      uid: authUser.uid,
-    });
-  }
-}
+type ItemCallableHandlerDependencies = Pick<
+  AppServices,
+  "firestoreService"
+>;
 
 /**
- * CALLABLE READ - Get all items with pagination support
+ * Create Firestore item callable handlers from injected dependencies.
  *
- * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<ItemListResponse>} Paginated items response.
+ * @param {ItemCallableHandlerDependencies} dependencies Handler dependencies.
+ * @return {object} Firestore item callable handlers.
  */
-export async function getAllItemsCallHandler(
-  request: CallableRequest<unknown>
-): Promise<ItemListResponse> {
-  const authUser = await requireCallableActiveAuth(request);
+export function createItemCallableHandlers(
+  dependencies: ItemCallableHandlerDependencies
+) {
+  const {firestoreService} = dependencies;
 
-  try {
-    const {limit, cursor} = validateRequest(
-      paginationQuerySchema,
-      getCallablePayload(request.data) || {}
-    );
+  /**
+   * CALLABLE CREATE - Add a new item to Firestore from client SDKs
+   *
+   * @param {CallableRequest<unknown>} request Callable request.
+   * @return {Promise<ItemRecord>} Created item response.
+   */
+  async function createItemCallHandler(
+    request: CallableRequest<unknown>
+  ): Promise<ItemRecord> {
+    const authUser = await requireCallableActiveAuth(request);
 
-    const result = await firestoreService.getAllItems(
-      limit,
-      cursor,
-      authUser.uid,
-      authUser.role
-    );
-    logInfo("Items listed", {
-      transport: "callable",
-      operation: "getAllItemsCall",
-      uid: authUser.uid,
-      role: authUser.role,
-      count: result.pagination.count,
-      total: result.pagination.total,
-      limit,
-      cursor: cursor || null,
-      nextCursor: result.pagination.nextCursor,
-      hasMore: result.pagination.hasMore,
-    });
-    return result;
-  } catch (error) {
-    throwCallableError(error, "Failed to fetch items", {
-      operation: "getAllItemsCall",
-      uid: authUser.uid,
-    });
-  }
-}
-
-/**
- * CALLABLE READ - Get a single item by ID
- *
- * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<ItemRecord>} Item response.
- */
-export async function getItemByIdCallHandler(
-  request: CallableRequest<unknown>
-): Promise<ItemRecord> {
-  const authUser = await requireCallableActiveAuth(request);
-
-  try {
-    const {id: itemId} = validateRequest(
-      itemIdQuerySchema,
-      getCallablePayload(request.data)
-    );
-    const result = await firestoreService.getItemById(
-      itemId,
-      authUser.uid,
-      authUser.role
-    );
-
-    if (!result) {
-      throw notFoundError("Item not found");
+    try {
+      const body = validateRequest(
+        createItemSchema,
+        getCallablePayload(request.data)
+      );
+      const result = await firestoreService.createItem(body, authUser.uid);
+      logInfo("Item created", {
+        transport: "callable",
+        operation: "createItemCall",
+        uid: authUser.uid,
+        itemId: result.id,
+      });
+      return result;
+    } catch (error) {
+      throwCallableError(error, "Failed to create item", {
+        operation: "createItemCall",
+        uid: authUser.uid,
+      });
     }
-
-    logInfo("Item fetched", {
-      transport: "callable",
-      operation: "getItemByIdCall",
-      uid: authUser.uid,
-      itemId,
-    });
-    return result;
-  } catch (error) {
-    throwCallableError(error, "Failed to fetch item", {
-      operation: "getItemByIdCall",
-      uid: authUser.uid,
-    });
   }
-}
 
-/**
- * CALLABLE UPDATE - Update an existing item
- *
- * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<ItemRecord>} Updated item response.
- */
-export async function updateItemCallHandler(
-  request: CallableRequest<unknown>
-): Promise<ItemRecord> {
-  const authUser = await requireCallableActiveAuth(request);
+  /**
+   * CALLABLE READ - Get all items with pagination support
+   *
+   * @param {CallableRequest<unknown>} request Callable request.
+   * @return {Promise<ItemListResponse>} Paginated items response.
+   */
+  async function getAllItemsCallHandler(
+    request: CallableRequest<unknown>
+  ): Promise<ItemListResponse> {
+    const authUser = await requireCallableActiveAuth(request);
 
-  try {
-    const updatePayload = {
-      ...getCallablePayload(request.data) as Record<string, unknown>,
-    };
-    const {id: itemId} = validateRequest(itemIdQuerySchema, {
-      id: updatePayload.id,
-    });
-    delete updatePayload.id;
-    const updateData = validateRequest(updateItemSchema, updatePayload);
-    const result = await firestoreService.updateItem(
-      itemId,
-      updateData,
-      authUser.uid,
-      authUser.role
-    );
+    try {
+      const {limit, cursor} = validateRequest(
+        paginationQuerySchema,
+        getCallablePayload(request.data) || {}
+      );
 
-    if (!result) {
-      throw notFoundError("Item not found");
+      const result = await firestoreService.getAllItems(
+        limit,
+        cursor,
+        authUser.uid,
+        authUser.role
+      );
+      logInfo("Items listed", {
+        transport: "callable",
+        operation: "getAllItemsCall",
+        uid: authUser.uid,
+        role: authUser.role,
+        count: result.pagination.count,
+        total: result.pagination.total,
+        limit,
+        cursor: cursor || null,
+        nextCursor: result.pagination.nextCursor,
+        hasMore: result.pagination.hasMore,
+      });
+      return result;
+    } catch (error) {
+      throwCallableError(error, "Failed to fetch items", {
+        operation: "getAllItemsCall",
+        uid: authUser.uid,
+      });
     }
-
-    logInfo("Item updated", {
-      transport: "callable",
-      operation: "updateItemCall",
-      uid: authUser.uid,
-      itemId,
-    });
-    return result;
-  } catch (error) {
-    throwCallableError(error, "Failed to update item", {
-      operation: "updateItemCall",
-      uid: authUser.uid,
-    });
   }
-}
 
-/**
- * CALLABLE DELETE - Delete an item
- *
- * @param {CallableRequest<unknown>} request Callable request.
- * @return {Promise<DeleteItemResponse>} Delete confirmation response.
- */
-export async function deleteItemCallHandler(
-  request: CallableRequest<unknown>
-): Promise<DeleteItemResponse> {
-  const authUser = await requireCallableActiveAuth(request);
+  /**
+   * CALLABLE READ - Get a single item by ID
+   *
+   * @param {CallableRequest<unknown>} request Callable request.
+   * @return {Promise<ItemRecord>} Item response.
+   */
+  async function getItemByIdCallHandler(
+    request: CallableRequest<unknown>
+  ): Promise<ItemRecord> {
+    const authUser = await requireCallableActiveAuth(request);
 
-  try {
-    const {id: itemId} = validateRequest(
-      itemIdQuerySchema,
-      getCallablePayload(request.data)
-    );
-    const result = await firestoreService.deleteItem(
-      itemId,
-      authUser.uid,
-      authUser.role
-    );
+    try {
+      const {id: itemId} = validateRequest(
+        itemIdQuerySchema,
+        getCallablePayload(request.data)
+      );
+      const result = await firestoreService.getItemById(
+        itemId,
+        authUser.uid,
+        authUser.role
+      );
 
-    if (!result) {
-      throw notFoundError("Item not found");
+      if (!result) {
+        throw notFoundError("Item not found");
+      }
+
+      logInfo("Item fetched", {
+        transport: "callable",
+        operation: "getItemByIdCall",
+        uid: authUser.uid,
+        itemId,
+      });
+      return result;
+    } catch (error) {
+      throwCallableError(error, "Failed to fetch item", {
+        operation: "getItemByIdCall",
+        uid: authUser.uid,
+      });
     }
-
-    logInfo("Item deleted", {
-      transport: "callable",
-      operation: "deleteItemCall",
-      uid: authUser.uid,
-      itemId,
-    });
-    return result;
-  } catch (error) {
-    throwCallableError(error, "Failed to delete item", {
-      operation: "deleteItemCall",
-      uid: authUser.uid,
-    });
   }
+
+  /**
+   * CALLABLE UPDATE - Update an existing item
+   *
+   * @param {CallableRequest<unknown>} request Callable request.
+   * @return {Promise<ItemRecord>} Updated item response.
+   */
+  async function updateItemCallHandler(
+    request: CallableRequest<unknown>
+  ): Promise<ItemRecord> {
+    const authUser = await requireCallableActiveAuth(request);
+
+    try {
+      const updatePayload = {
+        ...getCallablePayload(request.data) as Record<string, unknown>,
+      };
+      const {id: itemId} = validateRequest(itemIdQuerySchema, {
+        id: updatePayload.id,
+      });
+      delete updatePayload.id;
+      const updateData = validateRequest(updateItemSchema, updatePayload);
+      const result = await firestoreService.updateItem(
+        itemId,
+        updateData,
+        authUser.uid,
+        authUser.role
+      );
+
+      if (!result) {
+        throw notFoundError("Item not found");
+      }
+
+      logInfo("Item updated", {
+        transport: "callable",
+        operation: "updateItemCall",
+        uid: authUser.uid,
+        itemId,
+      });
+      return result;
+    } catch (error) {
+      throwCallableError(error, "Failed to update item", {
+        operation: "updateItemCall",
+        uid: authUser.uid,
+      });
+    }
+  }
+
+  /**
+   * CALLABLE DELETE - Delete an item
+   *
+   * @param {CallableRequest<unknown>} request Callable request.
+   * @return {Promise<DeleteItemResponse>} Delete confirmation response.
+   */
+  async function deleteItemCallHandler(
+    request: CallableRequest<unknown>
+  ): Promise<DeleteItemResponse> {
+    const authUser = await requireCallableActiveAuth(request);
+
+    try {
+      const {id: itemId} = validateRequest(
+        itemIdQuerySchema,
+        getCallablePayload(request.data)
+      );
+      const result = await firestoreService.deleteItem(
+        itemId,
+        authUser.uid,
+        authUser.role
+      );
+
+      if (!result) {
+        throw notFoundError("Item not found");
+      }
+
+      logInfo("Item deleted", {
+        transport: "callable",
+        operation: "deleteItemCall",
+        uid: authUser.uid,
+        itemId,
+      });
+      return result;
+    } catch (error) {
+      throwCallableError(error, "Failed to delete item", {
+        operation: "deleteItemCall",
+        uid: authUser.uid,
+      });
+    }
+  }
+
+  return {
+    createItemCallHandler,
+    getAllItemsCallHandler,
+    getItemByIdCallHandler,
+    updateItemCallHandler,
+    deleteItemCallHandler,
+  };
 }

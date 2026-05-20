@@ -1,33 +1,18 @@
 import {setGlobalOptions} from "firebase-functions/v2";
 import {onCall, onRequest} from "firebase-functions/v2/https";
 import {callableOptions, httpsOptions} from "./config/functions";
+import {appDependencies} from "./dependencies";
 import {
-  createItemCallHandler,
-  deleteItemCallHandler,
-  getAllItemsCallHandler,
-  getItemByIdCallHandler,
-  updateItemCallHandler,
+  createItemCallableHandlers,
 } from "./callable/handlers";
 import {withCallableRateLimit} from "./callable";
 import {
-  createActivationCodeHandler,
-  createItemHandler,
-  deleteFileHandler,
-  deleteItemHandler,
-  downloadFileHandler,
-  getAllItemsHandler,
-  getCurrentUserHandler,
-  getItemByIdHandler,
-  getUserRoleHandler,
-  listFilesHandler,
-  listPendingUsersHandler,
-  logoutUserHandler,
-  registerUserHandler,
-  setUserRoleHandler,
-  updateItemHandler,
-  uploadFileHandler,
+  createAuthHandlers,
+  createItemHandlers,
+  createStorageHandlers,
 } from "./http/handlers";
 import {
+  createHttpAuthGuards,
   type HttpMethod,
   withHttpMethods,
   withHttpRateLimit,
@@ -37,6 +22,25 @@ type HttpHandler = Parameters<typeof withHttpRateLimit>[1];
 
 setGlobalOptions({
   region: "us-central1",
+});
+
+const services = appDependencies.services;
+const httpAuthGuards = createHttpAuthGuards(services);
+const authHandlers = createAuthHandlers({
+  authService: services.authService,
+  requireAdminAuth: httpAuthGuards.requireAdminAuth,
+  requireAuth: httpAuthGuards.requireAuth,
+});
+const itemHandlers = createItemHandlers({
+  firestoreService: services.firestoreService,
+  requireActiveAuth: httpAuthGuards.requireActiveAuth,
+});
+const storageHandlers = createStorageHandlers({
+  storageService: services.storageService,
+  requireActiveAuth: httpAuthGuards.requireActiveAuth,
+});
+const itemCallableHandlers = createItemCallableHandlers({
+  firestoreService: services.firestoreService,
 });
 
 /**
@@ -91,94 +95,117 @@ export const helloHttp = onRequest(httpsOptions, withHttpRateLimit(
 
 export const registerUser = onRequest(
   httpsOptions,
-  httpEndpoint("registerUser", ["POST"], registerUserHandler)
+  httpEndpoint("registerUser", ["POST"], authHandlers.registerUserHandler)
 );
 export const createActivationCode = onRequest(
   httpsOptions,
-  httpEndpoint("createActivationCode", ["POST"], createActivationCodeHandler)
+  httpEndpoint(
+    "createActivationCode",
+    ["POST"],
+    authHandlers.createActivationCodeHandler
+  )
 );
 export const getCurrentUser = onRequest(
   httpsOptions,
-  httpEndpoint("getCurrentUser", ["GET"], getCurrentUserHandler)
+  httpEndpoint("getCurrentUser", ["GET"], authHandlers.getCurrentUserHandler)
 );
 export const logoutUser = onRequest(
   httpsOptions,
-  httpEndpoint("logoutUser", ["POST"], logoutUserHandler)
+  httpEndpoint("logoutUser", ["POST"], authHandlers.logoutUserHandler)
 );
 export const setUserRole = onRequest(
   httpsOptions,
-  httpEndpoint("setUserRole", ["POST"], setUserRoleHandler)
+  httpEndpoint("setUserRole", ["POST"], authHandlers.setUserRoleHandler)
 );
 export const getUserRole = onRequest(
   httpsOptions,
-  httpEndpoint("getUserRole", ["GET"], getUserRoleHandler)
+  httpEndpoint("getUserRole", ["GET"], authHandlers.getUserRoleHandler)
 );
 export const listPendingUsers = onRequest(
   httpsOptions,
-  httpEndpoint("listPendingUsers", ["GET"], listPendingUsersHandler)
+  httpEndpoint(
+    "listPendingUsers",
+    ["GET"],
+    authHandlers.listPendingUsersHandler
+  )
 );
 
 // ============ FIRESTORE ENDPOINTS ============
 
 export const createItem = onRequest(
   httpsOptions,
-  httpEndpoint("createItem", ["POST"], createItemHandler)
+  httpEndpoint("createItem", ["POST"], itemHandlers.createItemHandler)
 );
 export const getAllItems = onRequest(
   httpsOptions,
-  httpEndpoint("getAllItems", ["GET"], getAllItemsHandler)
+  httpEndpoint("getAllItems", ["GET"], itemHandlers.getAllItemsHandler)
 );
 export const getItemById = onRequest(
   httpsOptions,
-  httpEndpoint("getItemById", ["GET"], getItemByIdHandler)
+  httpEndpoint("getItemById", ["GET"], itemHandlers.getItemByIdHandler)
 );
 export const updateItem = onRequest(
   httpsOptions,
-  httpEndpoint("updateItem", ["PATCH"], updateItemHandler)
+  httpEndpoint("updateItem", ["PATCH"], itemHandlers.updateItemHandler)
 );
 export const deleteItem = onRequest(
   httpsOptions,
-  httpEndpoint("deleteItem", ["DELETE"], deleteItemHandler)
+  httpEndpoint("deleteItem", ["DELETE"], itemHandlers.deleteItemHandler)
 );
 
 // ============ FIRESTORE CALLABLE FUNCTIONS ============
 
 export const createItemCall = onCall(
   callableOptions,
-  withCallableRateLimit("createItemCall", createItemCallHandler)
+  withCallableRateLimit(
+    "createItemCall",
+    itemCallableHandlers.createItemCallHandler
+  )
 );
 export const getAllItemsCall = onCall(
   callableOptions,
-  withCallableRateLimit("getAllItemsCall", getAllItemsCallHandler)
+  withCallableRateLimit(
+    "getAllItemsCall",
+    itemCallableHandlers.getAllItemsCallHandler
+  )
 );
 export const getItemByIdCall = onCall(
   callableOptions,
-  withCallableRateLimit("getItemByIdCall", getItemByIdCallHandler)
+  withCallableRateLimit(
+    "getItemByIdCall",
+    itemCallableHandlers.getItemByIdCallHandler
+  )
 );
 export const updateItemCall = onCall(
   callableOptions,
-  withCallableRateLimit("updateItemCall", updateItemCallHandler)
+  withCallableRateLimit(
+    "updateItemCall",
+    itemCallableHandlers.updateItemCallHandler
+  )
 );
 export const deleteItemCall = onCall(
   callableOptions,
-  withCallableRateLimit("deleteItemCall", deleteItemCallHandler)
+  withCallableRateLimit(
+    "deleteItemCall",
+    itemCallableHandlers.deleteItemCallHandler
+  )
 );
 
 // ============ STORAGE ENDPOINTS ============
 
 export const uploadFile = onRequest(
   httpsOptions,
-  httpEndpoint("uploadFile", ["POST"], uploadFileHandler)
+  httpEndpoint("uploadFile", ["POST"], storageHandlers.uploadFileHandler)
 );
 export const downloadFile = onRequest(
   httpsOptions,
-  httpEndpoint("downloadFile", ["GET"], downloadFileHandler)
+  httpEndpoint("downloadFile", ["GET"], storageHandlers.downloadFileHandler)
 );
 export const listFiles = onRequest(
   httpsOptions,
-  httpEndpoint("listFiles", ["GET"], listFilesHandler)
+  httpEndpoint("listFiles", ["GET"], storageHandlers.listFilesHandler)
 );
 export const deleteFileEndpoint = onRequest(
   httpsOptions,
-  httpEndpoint("deleteFile", ["DELETE"], deleteFileHandler)
+  httpEndpoint("deleteFile", ["DELETE"], storageHandlers.deleteFileHandler)
 );
