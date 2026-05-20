@@ -1,5 +1,16 @@
 import {z} from "zod";
 
+export {
+  createItemSchema,
+  itemIdQuerySchema,
+  paginationQuerySchema,
+  updateItemSchema,
+} from "../modules/items/item.schemas";
+export type {
+  CreateItemInput,
+  UpdateItemInput,
+} from "../modules/items/item.schemas";
+
 const emailSchema = z.string()
   .trim()
   .email()
@@ -12,11 +23,6 @@ const activationCodeSchema = z.string()
   .regex(/^SUB-[A-F0-9]{32}$/);
 
 const uidSchema = z.string()
-  .trim()
-  .min(1)
-  .max(128);
-
-const itemIdSchema = z.string()
   .trim()
   .min(1)
   .max(128);
@@ -59,27 +65,6 @@ export const uidQuerySchema = z.object({
   uid: uidSchema,
 }).strict();
 
-export const itemIdQuerySchema = z.object({
-  id: itemIdSchema,
-}).strict();
-
-export const paginationQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(10),
-  cursor: itemIdSchema.optional(),
-}).strict();
-
-export const createItemSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  done: z.boolean(),
-}).strict();
-
-export const updateItemSchema = z.object({
-  name: z.string().trim().min(1).max(100).optional(),
-  done: z.boolean().optional(),
-}).strict().refine((data) => Object.keys(data).length > 0, {
-  message: "At least one field is required",
-});
-
 export const uploadFileQuerySchema = z.object({
   filename: uploadFilenameSchema.optional(),
 }).strict();
@@ -92,5 +77,3 @@ export type RegisterUserInput = z.infer<typeof registerUserSchema>;
 export type CreateActivationCodeInput =
   z.infer<typeof createActivationCodeSchema>;
 export type SetUserRoleInput = z.infer<typeof setUserRoleSchema>;
-export type CreateItemInput = z.infer<typeof createItemSchema>;
-export type UpdateItemInput = z.infer<typeof updateItemSchema>;

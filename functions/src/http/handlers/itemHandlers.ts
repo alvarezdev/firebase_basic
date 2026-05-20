@@ -1,14 +1,14 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import type {AppServices} from "../../dependencies";
-import {logInfo, notFoundError} from "../../shared";
 import {
   createItemSchema,
   itemIdQuerySchema,
   paginationQuerySchema,
   updateItemSchema,
-  validateRequest,
-} from "../../validation";
+} from "../../modules/items/item.schemas";
+import {logInfo, notFoundError} from "../../shared";
+import {validateRequest} from "../../validation";
 import type {HttpAuthGuards} from "../auth";
 import {sendErrorResponse} from "../responses";
 

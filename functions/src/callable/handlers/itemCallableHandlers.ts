@@ -1,18 +1,18 @@
 import {type CallableRequest} from "firebase-functions/v2/https";
 import type {AppServices} from "../../dependencies";
-import {logInfo, notFoundError} from "../../shared";
 import type {
   DeleteItemResponse,
   ItemListResponse,
-} from "../../services/firestoreService";
-import type {ItemRecord} from "../../repositories/itemRepository";
+} from "../../modules/items/item.service";
+import type {ItemRecord} from "../../modules/items/item.repository";
 import {
   createItemSchema,
   itemIdQuerySchema,
   paginationQuerySchema,
   updateItemSchema,
-  validateRequest,
-} from "../../validation";
+} from "../../modules/items/item.schemas";
+import {logInfo, notFoundError} from "../../shared";
+import {validateRequest} from "../../validation";
 import {
   getCallablePayload,
   requireCallableActiveAuth,
