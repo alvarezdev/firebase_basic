@@ -14,7 +14,7 @@ import {validateRequest} from "../../validation";
 import type {HttpAuthGuards} from "../auth";
 import {sendErrorResponse} from "../responses";
 
-type StorageHandlerDependencies = Pick<AppServices, "storageService"> &
+type StorageHandlerDependencies = Pick<AppServices, "fileService"> &
   Pick<HttpAuthGuards, "requireActiveAuth">;
 
 /**
@@ -27,7 +27,7 @@ export function createStorageHandlers(
   dependencies: StorageHandlerDependencies
 ) {
   const {
-    storageService,
+    fileService,
     requireActiveAuth,
   } = dependencies;
 
@@ -62,7 +62,7 @@ export function createStorageHandlers(
       }
 
       const fileData = validateUploadData(req.body);
-      const result = await storageService.uploadFile(
+      const result = await fileService.uploadFile(
         filename,
         fileData,
         contentType,
@@ -104,7 +104,7 @@ export function createStorageHandlers(
 
     try {
       const {filename} = validateRequest(filenameQuerySchema, req.query);
-      const result = await storageService.downloadFile(
+      const result = await fileService.downloadFile(
         filename,
         authUser.uid,
         authUser.role
@@ -161,7 +161,7 @@ export function createStorageHandlers(
     }
 
     try {
-      const result = await storageService.listFiles(
+      const result = await fileService.listFiles(
         authUser.uid,
         authUser.role
       );
@@ -199,7 +199,7 @@ export function createStorageHandlers(
 
     try {
       const {filename} = validateRequest(filenameQuerySchema, req.query);
-      const result = await storageService.deleteFile(
+      const result = await fileService.deleteFile(
         filename,
         authUser.uid,
         authUser.role

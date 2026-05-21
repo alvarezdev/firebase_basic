@@ -21,7 +21,7 @@ import {
 
 type ItemCallableHandlerDependencies = Pick<
   AppServices,
-  "firestoreService"
+  "itemService"
 >;
 
 /**
@@ -33,7 +33,7 @@ type ItemCallableHandlerDependencies = Pick<
 export function createItemCallableHandlers(
   dependencies: ItemCallableHandlerDependencies
 ) {
-  const {firestoreService} = dependencies;
+  const {itemService} = dependencies;
 
   /**
    * CALLABLE CREATE - Add a new item to Firestore from client SDKs
@@ -51,7 +51,7 @@ export function createItemCallableHandlers(
         createItemSchema,
         getCallablePayload(request.data)
       );
-      const result = await firestoreService.createItem(body, authUser.uid);
+      const result = await itemService.createItem(body, authUser.uid);
       logInfo("Item created", {
         transport: "callable",
         operation: "createItemCall",
@@ -84,7 +84,7 @@ export function createItemCallableHandlers(
         getCallablePayload(request.data) || {}
       );
 
-      const result = await firestoreService.getAllItems(
+      const result = await itemService.getAllItems(
         limit,
         cursor,
         authUser.uid,
@@ -127,7 +127,7 @@ export function createItemCallableHandlers(
         itemIdQuerySchema,
         getCallablePayload(request.data)
       );
-      const result = await firestoreService.getItemById(
+      const result = await itemService.getItemById(
         itemId,
         authUser.uid,
         authUser.role
@@ -172,7 +172,7 @@ export function createItemCallableHandlers(
       });
       delete updatePayload.id;
       const updateData = validateRequest(updateItemSchema, updatePayload);
-      const result = await firestoreService.updateItem(
+      const result = await itemService.updateItem(
         itemId,
         updateData,
         authUser.uid,
@@ -214,7 +214,7 @@ export function createItemCallableHandlers(
         itemIdQuerySchema,
         getCallablePayload(request.data)
       );
-      const result = await firestoreService.deleteItem(
+      const result = await itemService.deleteItem(
         itemId,
         authUser.uid,
         authUser.role

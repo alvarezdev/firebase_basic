@@ -32,15 +32,15 @@ const authHandlers = createAuthHandlers({
   requireAuth: httpAuthGuards.requireAuth,
 });
 const itemHandlers = createItemHandlers({
-  firestoreService: services.firestoreService,
+  itemService: services.itemService,
   requireActiveAuth: httpAuthGuards.requireActiveAuth,
 });
 const storageHandlers = createStorageHandlers({
-  storageService: services.storageService,
+  fileService: services.fileService,
   requireActiveAuth: httpAuthGuards.requireActiveAuth,
 });
 const itemCallableHandlers = createItemCallableHandlers({
-  firestoreService: services.firestoreService,
+  itemService: services.itemService,
 });
 
 /**

@@ -12,7 +12,7 @@ import {validateRequest} from "../../validation";
 import type {HttpAuthGuards} from "../auth";
 import {sendErrorResponse} from "../responses";
 
-type ItemHandlerDependencies = Pick<AppServices, "firestoreService"> &
+type ItemHandlerDependencies = Pick<AppServices, "itemService"> &
   Pick<HttpAuthGuards, "requireActiveAuth">;
 
 /**
@@ -23,7 +23,7 @@ type ItemHandlerDependencies = Pick<AppServices, "firestoreService"> &
  */
 export function createItemHandlers(dependencies: ItemHandlerDependencies) {
   const {
-    firestoreService,
+    itemService,
     requireActiveAuth,
   } = dependencies;
 
@@ -45,7 +45,7 @@ export function createItemHandlers(dependencies: ItemHandlerDependencies) {
 
     try {
       const body = validateRequest(createItemSchema, req.body);
-      const result = await firestoreService.createItem(body, authUser.uid);
+      const result = await itemService.createItem(body, authUser.uid);
       logInfo("Item created", {
         transport: "http",
         operation: "createItem",
@@ -79,7 +79,7 @@ export function createItemHandlers(dependencies: ItemHandlerDependencies) {
 
     try {
       const {limit, cursor} = validateRequest(paginationQuerySchema, req.query);
-      const result = await firestoreService.getAllItems(
+      const result = await itemService.getAllItems(
         limit,
         cursor,
         authUser.uid,
@@ -124,7 +124,7 @@ export function createItemHandlers(dependencies: ItemHandlerDependencies) {
 
     try {
       const {id: itemId} = validateRequest(itemIdQuerySchema, req.query);
-      const result = await firestoreService.getItemById(
+      const result = await itemService.getItemById(
         itemId,
         authUser.uid,
         authUser.role
@@ -175,7 +175,7 @@ export function createItemHandlers(dependencies: ItemHandlerDependencies) {
     try {
       const {id: itemId} = validateRequest(itemIdQuerySchema, req.query);
       const updateData = validateRequest(updateItemSchema, req.body);
-      const result = await firestoreService.updateItem(
+      const result = await itemService.updateItem(
         itemId,
         updateData,
         authUser.uid,
@@ -226,7 +226,7 @@ export function createItemHandlers(dependencies: ItemHandlerDependencies) {
 
     try {
       const {id: itemId} = validateRequest(itemIdQuerySchema, req.query);
-      const result = await firestoreService.deleteItem(
+      const result = await itemService.deleteItem(
         itemId,
         authUser.uid,
         authUser.role

@@ -1,11 +1,11 @@
-import * as authService from "./services/authService";
-import * as firestoreService from "./services/firestoreService";
-import * as storageService from "./services/storageService";
+import {authService} from "./modules/auth/auth.service";
+import {fileService} from "./modules/files/file.service";
+import {itemService} from "./modules/items/item.service";
 
 export type AppServices = {
   authService: typeof authService;
-  firestoreService: typeof firestoreService;
-  storageService: typeof storageService;
+  fileService: typeof fileService;
+  itemService: typeof itemService;
 };
 
 export type AppDependencies = {
@@ -15,7 +15,7 @@ export type AppDependencies = {
 export const appDependencies: AppDependencies = {
   services: {
     authService,
-    firestoreService,
-    storageService,
+    fileService,
+    itemService,
   },
 };
