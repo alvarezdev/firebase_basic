@@ -1,18 +1,18 @@
 import type {Response} from "express";
 import type {Request} from "firebase-functions/v2/https";
 import type {AppServices} from "../../dependencies";
-import {logInfo, notFoundError} from "../../shared";
 import {
   filenameQuerySchema,
   uploadFileQuerySchema,
-  validateRequest,
-} from "../../validation";
-import type {HttpAuthGuards} from "../auth";
-import {sendErrorResponse} from "../responses";
+} from "../../modules/files/file.schemas";
 import {
   validateUploadContentType,
   validateUploadData,
-} from "../../storage/uploadValidation";
+} from "../../modules/files/uploadValidation";
+import {logInfo, notFoundError} from "../../shared";
+import {validateRequest} from "../../validation";
+import type {HttpAuthGuards} from "../auth";
+import {sendErrorResponse} from "../responses";
 
 type StorageHandlerDependencies = Pick<AppServices, "storageService"> &
   Pick<HttpAuthGuards, "requireActiveAuth">;
