@@ -43,6 +43,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Configure emulator secrets
+        run: cp .secret.local.example .secret.local
+
       - name: Test Firestore and Storage rules
         run: npm run test:rules:emulators
 

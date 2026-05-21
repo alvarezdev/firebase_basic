@@ -13,7 +13,9 @@ import type {HttpAuthGuards} from "../auth";
 import {sendErrorResponse} from "../responses";
 
 type AuthHandlerDependencies = Pick<AppServices, "authService"> &
-  Pick<HttpAuthGuards, "requireAdminAuth" | "requireAuth">;
+  Pick<HttpAuthGuards, "requireAdminAuth" | "requireAuth"> & {
+    getPaymentWebhookSecret?: () => string | undefined;
+  };
 
 /**
  * Create Auth HTTP handlers from injected dependencies.
@@ -24,6 +26,7 @@ type AuthHandlerDependencies = Pick<AppServices, "authService"> &
 export function createAuthHandlers(dependencies: AuthHandlerDependencies) {
   const {
     authService,
+    getPaymentWebhookSecret = () => undefined,
     requireAdminAuth,
     requireAuth,
   } = dependencies;
@@ -70,7 +73,8 @@ export function createAuthHandlers(dependencies: AuthHandlerDependencies) {
       const body = validateRequest(createActivationCodeSchema, req.body);
       const result = await authService.createActivationCode(
         body,
-        req.get("x-payment-secret")
+        req.get("x-payment-secret"),
+        getPaymentWebhookSecret()
       );
       logInfo("Activation code created", {
         transport: "http",

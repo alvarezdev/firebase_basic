@@ -57,6 +57,8 @@ test-results/
 .env.development.local
 .env.test.local
 .env.production.local
+.secret.local
+**/.secret.local
 
 # Archivos de configuración sensibles
 service-account-key.json

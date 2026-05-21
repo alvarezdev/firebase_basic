@@ -1,36 +1,68 @@
 # Firebase Basic
 
-Proyecto educativo para aprender Firebase paso a paso usando **Cloud Functions v2**, **Firestore**, **Cloud Storage** y la **Firebase Emulator Suite**.
+Proyecto educativo para aprender Firebase paso a paso usando Cloud Functions v2, Authentication, Firestore, Cloud Storage, Security Rules y Firebase Emulator Suite.
 
-El repositorio empezó con funciones simples de "Hola mundo" y actualmente ya incluye una primera arquitectura con capa de servicios para separar los endpoints HTTP de la lógica de Firestore, Storage y Authentication.
+El proyecto funciona con dos ambientes simples:
+
+- **Dev local**: emuladores de Firebase.
+- **PDN didáctico**: proyecto remoto `guarderia-dev`.
+
+> Aunque el proyecto remoto se llama `guarderia-dev`, en este ejercicio representa el ambiente desplegado final.
 
 ## Estado Actual
 
-- ✅ **Cloud Functions v2**: funciones `onCall` y `onRequest`.
-- ✅ **Firestore**: CRUD básico sobre la colección `items`.
-- ✅ **Cloud Storage**: subir, descargar, listar y borrar archivos.
-- ✅ **Firebase Admin SDK**: inicialización centralizada para Auth, Firestore y Storage.
-- ✅ **Emuladores**: configuración para Functions, Firestore, Auth, Storage y Emulator UI.
-- ✅ **Authentication**: registro, validación de ID tokens y logout por revocación de refresh tokens.
-- ✅ **Reglas seguras básicas**: Firestore y Storage requieren usuario autenticado.
-- ✅ **Autorización por propietario**: cada usuario accede solo a sus items y archivos.
-- ✅ **Roles básicos**: custom claims `user` y `admin` en Firebase Auth.
-- ✅ **Uso de roles en recursos**: usuarios admin pueden acceder a recursos de otros usuarios.
-- ✅ **Activación de administradores**: código de suscripción simulado para crear usuarios `admin`.
-- ✅ **Códigos de activación protegidos**: códigos más fuertes y guardados como hash en Firestore.
-- ✅ **Aprobación de usuarios**: usuarios normales quedan `pending` hasta aprobación admin.
-- ✅ **Validación de inputs**: schemas con Zod para Auth, Firestore, Storage y query params.
-- ✅ **Funciones callable para apps**: CRUD de Firestore disponible también con `onCall`.
-- ✅ **Región explícita**: Cloud Functions configuradas en `us-central1`.
-- ✅ **CORS configurado**: orígenes permitidos definidos para HTTP y `onCall`.
-- ✅ **Logs estructurados**: operaciones exitosas y errores registran metadata segura.
-- ✅ **Rate limiting distribuido**: límite por cliente y función usando Firestore.
-- ✅ **Validación de métodos HTTP**: cada endpoint rechaza verbos no permitidos con `405`.
-- ✅ **App Check en callable**: funciones `onCall` exigen token de App Check válido.
-- ✅ **Tests de reglas**: pruebas automatizadas para Firestore y Storage con emuladores.
-- ✅ **Tests de integración de endpoints**: flujo HTTP protegido con Auth, Firestore y Storage.
+- Cloud Functions v2 con endpoints HTTP `onRequest` y funciones callable `onCall`.
+- Región explícita `southamerica-east1`, coherente con Firestore remoto.
+- Firebase Admin SDK centralizado para Auth, Firestore y Storage.
+- Registro de usuarios con estado `pending` o `active`.
+- Código de activación admin simulado para representar un flujo de suscripción/pago.
+- Custom claims `role: pending | user | admin`.
+- Endpoints administrativos protegidos por token y rol admin.
+- CRUD de Firestore protegido por autenticación, propietario y rol.
+- Endpoints de Storage protegidos por autenticación, propietario y rol.
+- Funciones callable para apps cliente en el CRUD de Firestore.
+- App Check obligatorio en funciones callable.
+- CORS configurado para localhost y dominios Firebase Hosting del proyecto.
+- Rate limit distribuido por cliente y función usando Firestore.
+- Validación de inputs con Zod.
+- Errores y logs estructurados.
+- Reglas de Firestore y Storage endurecidas.
+- Tests de reglas e integración con emuladores.
+- CI con lint, build, tests de reglas y tests de integración.
 
-## Estructura del Proyecto
+## Ambientes
+
+### Dev local
+
+Usa emuladores para probar sin tocar datos reales:
+
+- Auth Emulator
+- Firestore Emulator
+- Storage Emulator
+- Functions Emulator
+- Emulator UI
+
+Base URL local:
+
+```text
+http://localhost:5001/guarderia-dev/southamerica-east1
+```
+
+### PDN didáctico
+
+Usa el proyecto Firebase real:
+
+```text
+guarderia-dev
+```
+
+Base URL desplegada:
+
+```text
+https://southamerica-east1-guarderia-dev.cloudfunctions.net
+```
+
+## Estructura
 
 ```text
 firebase_basic/
@@ -38,267 +70,290 @@ firebase_basic/
 │   ├── src/
 │   │   ├── callable/
 │   │   │   ├── handlers/
-│   │   │   │   ├── itemCallableHandlers.ts # Handlers onCall para Firestore
-│   │   │   │   └── index.ts          # Export centralizado de handlers callable
-│   │   │   ├── auth.ts              # Helpers de autenticación para funciones onCall
-│   │   │   ├── errors.ts            # Conversión de errores para onCall
-│   │   │   └── index.ts             # Export centralizado de helpers callable
+│   │   │   │   └── itemCallableHandlers.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── errors.ts
+│   │   │   ├── rateLimit.ts
+│   │   │   └── index.ts
 │   │   ├── config/
-│   │   │   ├── firebase.ts          # Inicialización de Firebase Admin SDK
-│   │   │   └── functions.ts         # Opciones compartidas de Functions y CORS
+│   │   │   ├── firebase.ts
+│   │   │   └── functions.ts
 │   │   ├── http/
 │   │   │   ├── handlers/
-│   │   │   │   ├── authHandlers.ts   # Handlers HTTP de Authentication
-│   │   │   │   ├── itemHandlers.ts   # Handlers HTTP de Firestore
-│   │   │   │   ├── storageHandlers.ts # Handlers HTTP de Storage
-│   │   │   │   └── index.ts          # Export centralizado de handlers HTTP
-│   │   │   ├── auth.ts              # Helpers de autenticación para endpoints HTTP
-│   │   │   ├── responses.ts         # Respuestas HTTP de error centralizadas
-│   │   │   └── index.ts             # Export centralizado de helpers HTTP
-│   │   ├── repositories/
-│   │   │   ├── activationCodeRepository.ts # Acceso a códigos de activación
-│   │   │   ├── authRepository.ts     # Acceso directo a Firebase Auth
-│   │   │   ├── itemRepository.ts     # Acceso directo a Firestore para items
-│   │   │   ├── userProfileRepository.ts # Acceso a perfiles users/{uid}
-│   │   │   └── index.ts             # Export centralizado de repositories
-│   │   ├── services/
-│   │   │   ├── authService.ts       # Reglas de negocio de Authentication
-│   │   │   ├── firestoreService.ts  # Reglas de negocio para items
-│   │   │   ├── storageService.ts    # Operaciones básicas de Cloud Storage
-│   │   │   └── index.ts             # Export centralizado de servicios
+│   │   │   │   ├── authHandlers.ts
+│   │   │   │   ├── itemHandlers.ts
+│   │   │   │   └── storageHandlers.ts
+│   │   │   ├── auth.ts
+│   │   │   ├── methods.ts
+│   │   │   ├── rateLimit.ts
+│   │   │   ├── responses.ts
+│   │   │   └── index.ts
+│   │   ├── modules/
+│   │   │   ├── auth/
+│   │   │   │   ├── activationCode.repository.ts
+│   │   │   │   ├── auth.repository.ts
+│   │   │   │   ├── auth.schemas.ts
+│   │   │   │   ├── auth.service.ts
+│   │   │   │   └── userProfile.repository.ts
+│   │   │   ├── files/
+│   │   │   │   ├── file.repository.ts
+│   │   │   │   ├── file.schemas.ts
+│   │   │   │   ├── file.service.ts
+│   │   │   │   └── uploadValidation.ts
+│   │   │   └── items/
+│   │   │       ├── item.repository.ts
+│   │   │       ├── item.schemas.ts
+│   │   │       └── item.service.ts
 │   │   ├── shared/
-│   │   │   ├── errors.ts            # Errores comunes y normalización por transporte
-│   │   │   ├── logger.ts            # Logging estructurado
-│   │   │   ├── roles.ts             # Helpers compartidos de roles
-│   │   │   └── index.ts             # Export centralizado de shared
-│   │   ├── storage/
-│   │   │   └── uploadValidation.ts  # Validación de payload y content-type de uploads
+│   │   │   ├── errors.ts
+│   │   │   ├── logger.ts
+│   │   │   ├── rateLimiter.ts
+│   │   │   ├── roles.ts
+│   │   │   └── index.ts
 │   │   ├── validation/
-│   │   │   ├── index.ts             # Helper centralizado de validación
-│   │   │   └── schemas.ts           # Schemas Zod para requests
-│   │   └── index.ts                 # Registro de Cloud Functions expuestas
-│   ├── package.json                 # Scripts y dependencias de Functions
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── dependencies.ts
+│   │   └── index.ts
 │   ├── test/
-│   │   ├── integrationEndpoints.test.js # Tests HTTP end-to-end con emuladores
-│   │   └── securityRules.test.js    # Tests de reglas Firestore y Storage
-│   ├── tsconfig.json                # Configuración TypeScript
-│   └── .eslintrc.js                 # Configuración ESLint
-├── firebase.json                    # Firebase, predeploy y emuladores
-├── firestore.rules                  # Reglas de seguridad Firestore
-├── firestore.indexes.json           # Índices de Firestore
-├── storage.rules                    # Reglas de seguridad Storage
-├── .firebaserc                      # Proyecto Firebase predeterminado
-├── .gitignore                       # Archivos ignorados por Git
+│   │   ├── integrationEndpoints.test.js
+│   │   └── securityRules.test.js
+│   └── package.json
+├── .github/workflows/ci.yml
+├── firebase.json
+├── firestore.rules
+├── storage.rules
+├── firestore.indexes.json
+├── package.json
 └── README.md
 ```
 
 ## Requisitos
 
-- Node.js 20.x o superior.
-- Firebase CLI.
+- Node.js 20.x.
+- npm.
 - Git.
-- Cuenta de Firebase / Google Cloud para despliegues reales.
+- Cuenta Firebase con acceso al proyecto `guarderia-dev`.
 
-Instalar Firebase CLI globalmente:
+Los scripts usan Firebase CLI mediante:
 
 ```bash
-npm install -g firebase-tools
+npx -y firebase-tools@latest
 ```
+
+No es obligatorio instalar Firebase CLI globalmente.
 
 ## Instalación
 
 ```bash
 git clone <repository-url>
-cd firebase_basic/functions
-npm install
+cd firebase_basic
+npm --prefix functions install
 ```
 
-Configurar acceso a Firebase si vas a usar un proyecto real:
+Login en Firebase, si vas a desplegar o consultar el proyecto remoto:
 
 ```bash
-firebase login
-firebase use --add
+npx -y firebase-tools@latest login
+npx -y firebase-tools@latest use guarderia-dev
 ```
-
-## Desarrollo Local
-
-Desde `functions/`, compilar y levantar los emuladores necesarios para las funciones protegidas:
-
-```bash
-cd functions
-npm run serve
-```
-
-Desde la raíz del proyecto, también puedes levantar todos los emuladores configurados:
-
-```bash
-firebase emulators:start
-```
-
-Puertos configurados:
-
-- Cloud Functions Emulator: http://localhost:5001
-- Firestore Emulator: http://localhost:8080
-- Auth Emulator: http://localhost:9099
-- Storage Emulator: http://localhost:9199
-- Firebase Emulator UI: http://localhost:4000
 
 ## Scripts
 
-Ejecutar dentro de `functions/`:
+Desde la raíz del proyecto:
 
 ```bash
-npm run build        # Compila TypeScript
-npm run build:watch  # Compila en modo watch
-npm run lint         # Ejecuta ESLint
-npm run test:rules   # Ejecuta tests de reglas contra emuladores activos
-npm run test:rules:emulators # Levanta Firestore/Storage y ejecuta tests de reglas
-npm run test:integration # Ejecuta tests HTTP contra emuladores activos
-npm run test:integration:emulators # Levanta emuladores y ejecuta tests HTTP
-npm run serve        # Compila y levanta Functions, Auth, Firestore y Storage
-npm run shell        # Shell interactivo de Functions
-npm run deploy       # Despliega Cloud Functions
-npm run logs         # Muestra logs de Functions
+npm run dev                 # Build y emuladores principales
+npm run emulators           # Todos los emuladores configurados
+npm run lint                # ESLint en functions/
+npm run build               # TypeScript build
+npm test                    # Lint, build, reglas e integración
+npm run secrets:set:payment # Configura PAYMENT_WEBHOOK_SECRET en Firebase
+npm run deploy:functions    # Despliega Cloud Functions
+npm run deploy:rules        # Despliega reglas Firestore y Storage
+npm run deploy:all          # Despliega functions + reglas
+npm run logs                # Logs de Functions
 ```
 
-## Funciones Disponibles
+Desde `functions/` también existen scripts equivalentes.
 
-### Hola Mundo
+## Desarrollo Local
 
-`helloCall`: función callable para invocar desde un cliente Firebase.
-
-`helloHttp`: endpoint HTTP tradicional.
-
-Ejemplo local:
+Levantar emuladores principales:
 
 ```bash
-curl http://localhost:5001/guarderia-dev/us-central1/helloHttp
+npm run dev
 ```
 
-Respuesta:
+Puertos:
+
+- Functions: http://localhost:5001
+- Firestore: http://localhost:8080
+- Auth: http://localhost:9099
+- Storage: http://localhost:9199
+- Emulator UI: http://localhost:4000
+
+En local, el flujo de código de activación acepta el secreto didáctico:
+
+```text
+demo-payment-secret
+```
+
+Ese valor solo se permite cuando el backend corre con emuladores.
+
+Para evitar que el emulador intente leer Secret Manager remoto durante pruebas locales, puedes crear el archivo local de secrets:
+
+```bash
+cp functions/.secret.local.example functions/.secret.local
+```
+
+El archivo `functions/.secret.local` está ignorado por Git.
+
+## Secrets
+
+El endpoint `createActivationCode` simula un webhook de pago. En el proyecto desplegado compara el header:
+
+```text
+x-payment-secret
+```
+
+contra el secret seguro:
+
+```text
+PAYMENT_WEBHOOK_SECRET
+```
+
+Configurar el secret remoto:
+
+```bash
+npm run secrets:set:payment
+```
+
+Firebase pedirá escribir el valor. No debe guardarse en el repositorio.
+Si Firebase indica que Secret Manager API no está habilitada, acepta la activación desde CLI o habilítala en Google Cloud Console para `guarderia-dev`.
+
+Después de crear o cambiar el secret, despliega Functions:
+
+```bash
+npm run deploy:functions
+```
+
+## App Check
+
+Las funciones callable tienen App Check obligatorio:
+
+```ts
+enforceAppCheck: true
+```
+
+Esto aplica a llamadas desde apps cliente usando Firebase SDK. En Flutter, además de iniciar sesión con Firebase Auth, la app debe inicializar App Check y usar la región correcta:
+
+```dart
+final functions = FirebaseFunctions.instanceFor(
+  region: 'southamerica-east1',
+);
+```
+
+Los endpoints HTTP se conservan para pruebas manuales con `curl` y para simular webhooks externos. Están protegidos con Auth, roles, CORS, rate limit y secrets cuando aplica. Si una app cliente fuera a consumir HTTP directamente, el siguiente paso sería validar App Check manualmente en esos endpoints o migrar ese flujo a callable.
+
+## Authentication
+
+Crear usuario normal:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/registerUser \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"secret123","displayName":"User Demo"}'
+```
+
+El usuario queda con:
 
 ```json
 {
-  "message": "Hola 🚀"
+  "role": "pending",
+  "status": "pending"
 }
 ```
 
-> Nota: las funciones usan región explícita `us-central1`, configurada con `setGlobalOptions` en `functions/src/index.ts`.
-
-### Authentication
-
-Crear usuario normal con email y contraseña:
+Crear código de activación admin en local:
 
 ```bash
-curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
-  -H "Content-Type: application/json" \
-  -d '{"email":"demo@example.com","password":"secret123","displayName":"Demo User"}'
-```
-
-El usuario queda con `role: pending` y `status: pending`. Puede autenticarse, pero no puede consumir CRUD ni Storage hasta que un admin lo apruebe.
-
-Simular pago y generar código de activación admin:
-
-```bash
-curl -X POST http://localhost:5001/guarderia-dev/us-central1/createActivationCode \
+curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/createActivationCode \
   -H "x-payment-secret: demo-payment-secret" \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com"}'
 ```
 
-Registrar admin usando el código de activación:
+Registrar admin usando el código:
 
 ```bash
-curl -X POST http://localhost:5001/guarderia-dev/us-central1/registerUser \
+curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/registerUser \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"secret123","displayName":"Admin User","activationCode":"SUB-CODE"}'
+  -d '{"email":"admin@example.com","password":"secret123","displayName":"Admin Demo","activationCode":"SUB-CODE"}'
 ```
 
-El código solo se puede usar una vez. En emuladores se acepta `demo-payment-secret`; en producción debe configurarse `PAYMENT_WEBHOOK_SECRET`.
-Para facilitar las pruebas locales, el emulador devuelve el código en la respuesta. En producción, el backend guarda solo el hash del código y el código real debería enviarse por email.
-
-Login con el Auth Emulator:
+Login contra Auth Emulator:
 
 ```bash
 curl -X POST "http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"email":"demo@example.com","password":"secret123","returnSecureToken":true}'
+  -d '{"email":"user@example.com","password":"secret123","returnSecureToken":true}'
 ```
 
-Validar el usuario autenticado desde Cloud Functions:
+Guardar token:
 
 ```bash
 TOKEN="<firebase-id-token>"
-
-curl http://localhost:5001/guarderia-dev/us-central1/getCurrentUser \
-  -H "Authorization: Bearer $TOKEN"
 ```
 
-Logout desde Cloud Functions revocando refresh tokens del usuario autenticado:
+Obtener usuario actual:
 
 ```bash
-curl -X POST http://localhost:5001/guarderia-dev/us-central1/logoutUser \
+curl http://localhost:5001/guarderia-dev/southamerica-east1/getCurrentUser \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Después del login, el ID token se envía en cada endpoint protegido con `Authorization: Bearer <ID_TOKEN>`.
+Logout:
+
+```bash
+curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/logoutUser \
+  -H "Authorization: Bearer $TOKEN"
+```
 
 Listar usuarios pendientes como admin:
 
 ```bash
-curl http://localhost:5001/guarderia-dev/us-central1/listPendingUsers \
+curl http://localhost:5001/guarderia-dev/southamerica-east1/listPendingUsers \
   -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
 
-Asignar rol básico a un usuario como admin:
+Aprobar usuario como admin:
 
 ```bash
-curl -X POST http://localhost:5001/guarderia-dev/us-central1/setUserRole \
+curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/setUserRole \
   -H "Authorization: Bearer $TOKEN_ADMIN" \
   -H "Content-Type: application/json" \
   -d '{"uid":"<firebase-auth-uid>","role":"user"}'
 ```
 
-Consultar rol de un usuario:
+Consultar rol:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getUserRole?uid=<firebase-auth-uid>" \
+curl "http://localhost:5001/guarderia-dev/southamerica-east1/getUserRole?uid=<firebase-auth-uid>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Después de cambiar un rol, el usuario debe iniciar sesión nuevamente o refrescar su ID token para recibir el custom claim actualizado.
+Después de cambiar un custom claim, el usuario debe volver a iniciar sesión o refrescar su ID token para recibir el nuevo rol.
 
-### Firestore
+## Firestore HTTP
 
-Los endpoints trabajan sobre la colección `items`.
+Los endpoints trabajan sobre la colección:
 
-Cada item guarda automáticamente `ownerId` con el `uid` del usuario autenticado. Los listados y operaciones por ID solo devuelven documentos del propietario.
+```text
+items
+```
 
-Los usuarios con rol `admin` pueden listar, leer, actualizar y borrar items de cualquier usuario.
-
-Los usuarios con rol `pending` no pueden consumir estos endpoints hasta ser aprobados por un admin.
-
-Endpoints HTTP disponibles:
-
-- `createItem`
-- `getAllItems`
-- `getItemById`
-- `updateItem`
-- `deleteItem`
-
-Funciones callable equivalentes para apps cliente:
-
-- `createItemCall`
-- `getAllItemsCall`
-- `getItemByIdCall`
-- `updateItemCall`
-- `deleteItemCall`
-
-En `onRequest` el token llega en el header `Authorization: Bearer <ID_TOKEN>`.
-En `onCall`, el SDK cliente envía el contexto de Auth automáticamente y el backend usa `request.auth` para obtener `uid` y custom claims como `role`.
-Las funciones `onCall` también tienen App Check activo, por lo que las apps cliente deben inicializar App Check para que Firebase envíe el token de app legítima.
-
-Los items aceptan únicamente estos campos:
+El cliente solo envía:
 
 ```json
 {
@@ -307,14 +362,12 @@ Los items aceptan únicamente estos campos:
 }
 ```
 
-`ownerId` lo asigna el backend con el `uid` autenticado y no se acepta desde el cliente.
+El backend agrega `ownerId` con el `uid` autenticado.
 
 Crear item:
 
 ```bash
-TOKEN="<firebase-id-token>"
-
-curl -X POST http://localhost:5001/guarderia-dev/us-central1/createItem \
+curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/createItem \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Primer item","done":false}'
@@ -323,28 +376,28 @@ curl -X POST http://localhost:5001/guarderia-dev/us-central1/createItem \
 Listar items:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10" \
+curl "http://localhost:5001/guarderia-dev/southamerica-east1/getAllItems?limit=10" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Si la respuesta trae `pagination.nextCursor`, se usa ese valor para pedir la siguiente pagina:
+Siguiente página:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getAllItems?limit=10&cursor=<nextCursor>" \
+curl "http://localhost:5001/guarderia-dev/southamerica-east1/getAllItems?limit=10&cursor=<nextCursor>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Obtener item por ID:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/getItemById?id=<item-id>" \
+curl "http://localhost:5001/guarderia-dev/southamerica-east1/getItemById?id=<item-id>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Actualizar item:
 
 ```bash
-curl -X PATCH "http://localhost:5001/guarderia-dev/us-central1/updateItem?id=<item-id>" \
+curl -X PATCH "http://localhost:5001/guarderia-dev/southamerica-east1/updateItem?id=<item-id>" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"done":true}'
@@ -353,26 +406,48 @@ curl -X PATCH "http://localhost:5001/guarderia-dev/us-central1/updateItem?id=<it
 Borrar item:
 
 ```bash
-curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteItem?id=<item-id>" \
+curl -X DELETE "http://localhost:5001/guarderia-dev/southamerica-east1/deleteItem?id=<item-id>" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-### Cloud Storage
+## Firestore Callable
 
-Cada archivo se guarda bajo la ruta `users/{uid}/{filename}`. Los endpoints de Storage solo operan sobre archivos del usuario autenticado.
+Funciones callable disponibles para apps:
 
-Los usuarios con rol `admin` pueden listar, descargar y borrar archivos de cualquier usuario. Para descargar o borrar archivos ajenos, el admin debe usar la ruta completa devuelta por `listFiles`, por ejemplo `users/<uid>/hello.txt`.
+- `createItemCall`
+- `getAllItemsCall`
+- `getItemByIdCall`
+- `updateItemCall`
+- `deleteItemCall`
 
-Los usuarios con rol `pending` no pueden subir, listar, descargar ni borrar archivos.
+En callable:
 
-Los nombres de archivo se validan para evitar rutas inseguras y los uploads HTTP tienen límite de 5 MB. Para subir archivos, el nombre debe ser plano, por ejemplo `hello.txt`; no se aceptan subcarpetas como `docs/hello.txt`.
+- Auth llega automáticamente en `request.auth`.
+- Los custom claims como `role` llegan en `request.auth.token`.
+- App Check es obligatorio.
 
-Los tipos permitidos para upload son `text/plain`, `application/json`, `application/pdf` e imágenes `image/*`.
+## Cloud Storage HTTP
+
+Los archivos se guardan bajo:
+
+```text
+users/{uid}/{filename}
+```
+
+Reglas principales:
+
+- Usuarios `pending` no pueden usar Storage.
+- Usuarios `user` solo acceden a sus archivos.
+- Usuarios `admin` pueden listar, descargar y borrar archivos de cualquier usuario.
+- Upload máximo: 5 MB.
+- Content types permitidos: `text/plain`, `application/json`, `application/pdf`, `image/*`.
+- Usuarios normales solo pueden usar nombres planos como `hello.txt`.
+- Admins usan rutas completas como `users/<uid>/hello.txt` para archivos ajenos.
 
 Subir archivo:
 
 ```bash
-curl -X POST "http://localhost:5001/guarderia-dev/us-central1/uploadFile?filename=hello.txt" \
+curl -X POST "http://localhost:5001/guarderia-dev/southamerica-east1/uploadFile?filename=hello.txt" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: text/plain" \
   --data "Hola Storage"
@@ -381,196 +456,148 @@ curl -X POST "http://localhost:5001/guarderia-dev/us-central1/uploadFile?filenam
 Listar archivos:
 
 ```bash
-curl http://localhost:5001/guarderia-dev/us-central1/listFiles \
+curl http://localhost:5001/guarderia-dev/southamerica-east1/listFiles \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Descargar archivo propio:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=hello.txt" \
+curl "http://localhost:5001/guarderia-dev/southamerica-east1/downloadFile?filename=hello.txt" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Descargar archivo como admin usando ruta completa:
+Descargar como admin:
 
 ```bash
-curl "http://localhost:5001/guarderia-dev/us-central1/downloadFile?filename=users/<uid>/hello.txt" \
+curl "http://localhost:5001/guarderia-dev/southamerica-east1/downloadFile?filename=users/<uid>/hello.txt" \
   -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
 
-Borrar archivo propio:
+Borrar archivo:
 
 ```bash
-curl -X DELETE "http://localhost:5001/guarderia-dev/us-central1/deleteFileEndpoint?filename=hello.txt" \
+curl -X DELETE "http://localhost:5001/guarderia-dev/southamerica-east1/deleteFileEndpoint?filename=hello.txt" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 ## Seguridad
 
-Las reglas actuales requieren autenticación, rol activo y propiedad.
+Capas aplicadas:
 
-Firestore permite crear items solo si el usuario tiene `role: user` o `role: admin` y `ownerId` coincide con el `uid` autenticado. Las lecturas, actualizaciones y borrados requieren que el documento existente pertenezca al usuario activo o que el token tenga `role: admin`.
+- Firebase Auth para identidad.
+- Custom claims para roles.
+- Guards HTTP y callable.
+- Validación con Zod.
+- Reglas de Firestore y Storage para acceso directo desde clientes.
+- CORS controlado.
+- Rate limit distribuido.
+- App Check en callable.
+- Secrets para flujo tipo webhook.
+- Logs estructurados.
+- Tests automatizados.
 
-Además, las reglas validan que los documentos `items` tengan solo `name`, `done` y `ownerId`, con tipos correctos, y que `ownerId` no cambie durante updates.
+Firestore:
 
-```text
-request.auth != null &&
-  (request.auth.token.role == 'user' || request.auth.token.role == 'admin') &&
-  (resource.data.ownerId == request.auth.uid || request.auth.token.role == 'admin')
-```
+- `items` solo acepta `name`, `done` y `ownerId`.
+- `ownerId` debe coincidir con `request.auth.uid` al crear.
+- `ownerId` no puede cambiar en update.
+- Owner o admin pueden leer, actualizar y borrar.
+- `users/{uid}` solo lo lee el propio usuario o admin.
+- `activationCodes/{codeHash}` queda cerrado a clientes.
 
-Storage permite leer y borrar bajo la carpeta del usuario solo si tiene rol activo. Un token con `role: admin` puede leer y borrar bajo cualquier carpeta de usuario:
+Storage:
 
-```text
-users/{userId}/{filename}
-```
+- Solo rutas `users/{uid}/{filename}`.
+- Rutas anidadas quedan bloqueadas.
+- Uploads con tamaño y MIME controlado.
+- Owner o admin pueden leer/borrar.
 
-Para crear o actualizar archivos desde clientes directos, Storage Rules exige ruta plana, tamaño mayor a 0, máximo 5 MB y `contentType` permitido. Las rutas anidadas bajo `users/{uid}/...` quedan bloqueadas por reglas.
+## Tests
 
-Los endpoints HTTP también aplican esta restricción aunque usen Firebase Admin SDK: usuarios normales solo pueden enviar `filename`, y admins solo pueden usar rutas completas con forma `users/{uid}/{filename}`.
-
-Los perfiles `users/{uid}` se leen por el propio usuario o por un admin. Los documentos `activationCodes/{codeHash}` no se leen ni escriben desde clientes directos; solo el backend los maneja con Firebase Admin SDK.
-
-Además, los endpoints HTTP de CRUD y Storage verifican ID tokens con Firebase Admin SDK. Si el request no incluye `Authorization: Bearer <ID_TOKEN>`, la función responde `401 Unauthorized`. Si el usuario existe pero sigue `pending`, responde `403 Forbidden`.
-
-Los endpoints validan `body`, `query params` y nombres de archivo con schemas antes de ejecutar la lógica de negocio. Si el request no cumple el schema, responde `400 Invalid request data`.
-
-También validan el verbo HTTP esperado antes de ejecutar la lógica del endpoint. Si un endpoint recibe un método no permitido, responde `405 Method Not Allowed` y el header `Allow` indica los métodos válidos.
-
-Este es un tercer nivel de seguridad: el usuario debe estar autenticado, estar activo, ser propietario del recurso o tener rol `admin`.
-
-### Tests de Reglas
-
-Los tests de reglas validan acceso directo de cliente a Firestore y Storage, sin pasar por Cloud Functions.
-
-Ejecutar desde `functions/` levantando emuladores temporales:
+Tests de reglas:
 
 ```bash
-npm run test:rules:emulators
+npm --prefix functions run test:rules:emulators
 ```
 
-Escenarios cubiertos:
-
-- Usuario sin autenticación no puede leer ni escribir.
-- Usuario autenticado solo puede acceder a sus propios items y archivos.
-- Usuario normal no puede acceder a recursos de otro usuario.
-- Usuario con `role: admin` puede acceder a recursos de otros usuarios.
-- Usuario con `role: pending` no puede acceder a items ni archivos protegidos.
-- Clientes directos no pueden leer códigos de activación.
-- Firestore rechaza items con campos extra, tipos inválidos o cambios de `ownerId`.
-- Storage rechaza uploads con MIME no permitido, rutas anidadas o archivos mayores a 5 MB.
-
-### Tests de Integración
-
-Los tests de integración validan el flujo HTTP real contra Cloud Functions usando Auth, Firestore y Storage en emuladores.
-
-Ejecutar desde `functions/` levantando emuladores temporales:
+Tests de integración:
 
 ```bash
-npm run test:integration:emulators
+npm --prefix functions run test:integration:emulators
 ```
 
-Escenarios cubiertos:
-
-- Registro de usuarios desde `registerUser`.
-- Generación de código admin desde `createActivationCode`.
-- Almacenamiento de códigos de activación como hash, sin guardar el código crudo.
-- Registro de admin con código de activación.
-- Bloqueo de reutilización de códigos de activación.
-- Bloqueo de usuarios `pending` antes de aprobación.
-- Listado de usuarios pendientes para admin.
-- Asignación de roles con `setUserRole`.
-- Login contra Auth Emulator para obtener ID tokens.
-- Bloqueo de endpoints protegidos sin token.
-- Bloqueo de métodos HTTP no permitidos con `405`.
-- Bloqueo de requests con campos no permitidos.
-- Paginación de items con cursor y `nextCursor`.
-- Acceso de owner, bloqueo cross-user y acceso admin en Firestore.
-- Acceso de owner, bloqueo cross-user y acceso admin en Storage.
-
-## Plan de Aprendizaje
-
-### Fase 1: Cloud Functions
-
-- [x] Función callable con `onCall`.
-- [x] Endpoint HTTP con `onRequest`.
-- [x] Lógica compartida.
-
-### Fase 2: Firestore
-
-- [x] Inicializar Firebase Admin SDK.
-- [x] Crear documentos.
-- [x] Leer documentos por ID.
-- [x] Listar documentos con paginación básica.
-- [x] Actualizar documentos.
-- [x] Borrar documentos.
-- [x] Agregar validación de datos.
-- [x] Agregar paginación por cursor.
-- [ ] Agregar filtros y queries más específicas.
-- [ ] Explorar transacciones.
-
-### Fase 3: Cloud Storage
-
-- [x] Subir archivos.
-- [x] Descargar archivos.
-- [x] Listar archivos.
-- [x] Borrar archivos.
-- [ ] Validar tipos y tamaños de archivo.
-- [ ] Integrar metadata de archivos con Firestore.
-
-### Fase 4: Authentication
-
-- [x] Registro básico de usuarios.
-- [x] Login con Auth Emulator / Firebase Auth REST API.
-- [x] Obtener usuario actual con ID token.
-- [x] Logout desde cliente y revocación de refresh tokens desde backend.
-- [x] Verificación de Firebase ID tokens en Cloud Functions HTTP.
-- [x] Protección de endpoints CRUD.
-- [x] Protección de endpoints de Storage.
-- [x] Reglas de Firestore y Storage basadas en `request.auth`.
-- [x] Autorización por propietario en Firestore.
-- [x] Autorización por propietario en Storage.
-- [x] Asignación básica de roles con custom claims.
-- [x] Aplicar rol admin a Firestore y Storage.
-- [x] Crear flujo de activación admin con código de suscripción.
-- [x] Guardar códigos de activación como hash.
-- [x] Crear perfiles `users/{uid}` con estado `pending` o `active`.
-- [x] Proteger asignación de roles para uso exclusivo de admin.
-- [x] Validar requests con schemas antes de ejecutar servicios.
-- [x] Probar reglas de Firestore y Storage con emuladores.
-- [x] Probar endpoints HTTP protegidos con emuladores.
-
-### Fase 5: Calidad y Casos Avanzados
-
-- [ ] Tests unitarios.
-- [x] Tests de integración de endpoints con emuladores.
-- [ ] Triggers basados en eventos.
-- [ ] Procesamiento de datos.
-- [ ] Integración con servicios externos.
-
-## Despliegue
-
-Desde `functions/`:
+Suite completa desde la raíz:
 
 ```bash
-npm run deploy
+npm test
 ```
 
-El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
+El CI ejecuta:
 
-1. `npm run lint`
-2. `npm run build`
+1. `npm ci`
+2. `npm run lint`
+3. `npm run build`
+4. `cp .secret.local.example .secret.local`
+5. `npm run test:rules:emulators`
+6. `npm run test:integration:emulators`
 
-## Notas del Proyecto
+## Deploy Controlado
 
-- Proyecto Firebase predeterminado: `guarderia-dev`.
-- Firestore configurado en `southamerica-east1`.
-- Cloud Functions configuradas explícitamente en `us-central1`.
-- CORS permite localhost, 127.0.0.1 y dominios Firebase Hosting del proyecto.
-- Rate limiting distribuido en Firestore: 60 requests por minuto por cliente y función.
-- App Check está aplicado en funciones `onCall`; endpoints HTTP quedan protegidos por Auth, roles, validación, CORS y rate limiting.
-- Runtime de Functions: Node.js 20.
+Checklist recomendado antes de desplegar:
+
+1. Confirmar rama limpia:
+
+```bash
+git status
+```
+
+2. Ejecutar validación completa:
+
+```bash
+npm test
+```
+
+3. Configurar secret la primera vez:
+
+```bash
+npm run secrets:set:payment
+```
+
+4. Desplegar reglas:
+
+```bash
+npm run deploy:rules
+```
+
+5. Desplegar Functions:
+
+```bash
+npm run deploy:functions
+```
+
+O desplegar todo junto:
+
+```bash
+npm run deploy:all
+```
+
+6. Revisar logs:
+
+```bash
+npm run logs
+```
+
+Si ya existían funciones desplegadas en `us-central1`, después de mover a `southamerica-east1` Firebase crea nuevas funciones en la región nueva. Las funciones viejas deben eliminarse manualmente desde consola o con Firebase CLI.
+
+## Notas
+
+- Proyecto remoto: `guarderia-dev`.
+- Dev real: emuladores locales.
+- PDN didáctico: `guarderia-dev`.
+- Firestore: `southamerica-east1`.
+- Cloud Functions: `southamerica-east1`.
+- Runtime Functions: Node.js 20.
 - Lenguaje: TypeScript.
 
 ## Documentación Útil
@@ -584,4 +611,4 @@ El `predeploy` configurado en `firebase.json` ejecuta automáticamente:
 
 ---
 
-Creado para aprender Firebase de forma progresiva, empezando por Cloud Functions y avanzando hacia un backend serverless más completo.
+Proyecto creado para aprender Firebase de forma progresiva y cerrar con un backend serverless didáctico, seguro y desplegable.

@@ -1,6 +1,12 @@
 import {setGlobalOptions} from "firebase-functions/v2";
 import {onCall, onRequest} from "firebase-functions/v2/https";
-import {callableOptions, httpsOptions} from "./config/functions";
+import {
+  callableOptions,
+  functionsRegion,
+  getPaymentWebhookSecret,
+  httpsOptions,
+  paymentWebhookHttpsOptions,
+} from "./config/functions";
 import {appDependencies} from "./dependencies";
 import {
   createItemCallableHandlers,
@@ -21,13 +27,14 @@ import {
 type HttpHandler = Parameters<typeof withHttpRateLimit>[1];
 
 setGlobalOptions({
-  region: "us-central1",
+  region: functionsRegion,
 });
 
 const services = appDependencies.services;
 const httpAuthGuards = createHttpAuthGuards(services);
 const authHandlers = createAuthHandlers({
   authService: services.authService,
+  getPaymentWebhookSecret,
   requireAdminAuth: httpAuthGuards.requireAdminAuth,
   requireAuth: httpAuthGuards.requireAuth,
 });
@@ -98,7 +105,7 @@ export const registerUser = onRequest(
   httpEndpoint("registerUser", ["POST"], authHandlers.registerUserHandler)
 );
 export const createActivationCode = onRequest(
-  httpsOptions,
+  paymentWebhookHttpsOptions,
   httpEndpoint(
     "createActivationCode",
     ["POST"],

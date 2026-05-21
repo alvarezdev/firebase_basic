@@ -1,0 +1,16 @@
+{
+  "name": "firebase-basic-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix functions run serve",
+    "emulators": "npx -y firebase-tools@latest emulators:start",
+    "lint": "npm --prefix functions run lint",
+    "build": "npm --prefix functions run build",
+    "test": "npm run lint && npm run build && npm --prefix functions run test:rules:emulators && npm --prefix functions run test:integration:emulators",
+    "deploy:functions": "npx -y firebase-tools@latest deploy --only functions --project guarderia-dev",
+    "deploy:rules": "npx -y firebase-tools@latest deploy --only firestore:rules,storage --project guarderia-dev",
+    "deploy:all": "npx -y firebase-tools@latest deploy --only functions,firestore:rules,storage --project guarderia-dev",
+    "secrets:set:payment": "npx -y firebase-tools@latest functions:secrets:set PAYMENT_WEBHOOK_SECRET --project guarderia-dev",
+    "logs": "npx -y firebase-tools@latest functions:log --project guarderia-dev"
+  }
+}

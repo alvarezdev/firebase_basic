@@ -4,15 +4,19 @@
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",
     "test:rules": "node --test test/securityRules.test.js",
-    "test:rules:emulators": "firebase emulators:exec --only firestore,storage \"npm run test:rules\"",
+    "test:rules:emulators": "npx -y firebase-tools@latest emulators:exec --only firestore,storage \"npm run test:rules\"",
     "test:integration": "node --test test/integrationEndpoints.test.js",
-    "test:integration:emulators": "npm run build && firebase emulators:exec --only functions,auth,firestore,storage \"npm run test:integration\"",
+    "test:integration:emulators": "npm run build && npx -y firebase-tools@latest emulators:exec --only functions,auth,firestore,storage \"npm run test:integration\"",
     "build:watch": "tsc --watch",
-    "serve": "npm run build && firebase emulators:start --only functions,auth,firestore,storage",
-    "shell": "npm run build && firebase functions:shell",
+    "serve": "npm run build && npx -y firebase-tools@latest emulators:start --only functions,auth,firestore,storage",
+    "shell": "npm run build && npx -y firebase-tools@latest functions:shell",
     "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "deploy": "npm run deploy:functions",
+    "deploy:functions": "npx -y firebase-tools@latest deploy --only functions --project guarderia-dev",
+    "deploy:rules": "npx -y firebase-tools@latest deploy --only firestore:rules,storage --project guarderia-dev",
+    "deploy:all": "npx -y firebase-tools@latest deploy --only functions,firestore:rules,storage --project guarderia-dev",
+    "secrets:set:payment": "npx -y firebase-tools@latest functions:secrets:set PAYMENT_WEBHOOK_SECRET --project guarderia-dev",
+    "logs": "npx -y firebase-tools@latest functions:log --project guarderia-dev"
   },
   "engines": {
     "node": "20"

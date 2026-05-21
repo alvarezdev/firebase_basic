@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 
 const projectId = "guarderia-dev";
 const functionsBaseUrl =
-  `http://127.0.0.1:5001/${projectId}/us-central1`;
+  `http://127.0.0.1:5001/${projectId}/southamerica-east1`;
 const authBaseUrl =
   "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1";
 const appCheckToken = fakeJwt({

@@ -128,7 +128,8 @@ export type AuthService = {
   getUserRole(uid: string): Promise<UserRoleResponse>;
   createActivationCode(
     data: CreateActivationCodeInput,
-    paymentSecret: string | undefined
+    paymentSecret: string | undefined,
+    configuredPaymentSecret?: string
   ): Promise<ActivationCodeResponse>;
   listPendingUsers(): Promise<PendingUsersResponse>;
   logoutUser(
@@ -179,9 +180,14 @@ function isEmulatorRuntime() {
  * Validate the secret that simulates a payment provider webhook.
  *
  * @param {string | undefined} paymentSecret Payment secret from request header.
+ * @param {string | undefined} configuredPaymentSecret Runtime secret.
  */
-function validatePaymentSecret(paymentSecret: string | undefined) {
-  const configuredSecret = process.env.PAYMENT_WEBHOOK_SECRET;
+function validatePaymentSecret(
+  paymentSecret: string | undefined,
+  configuredPaymentSecret?: string
+) {
+  const configuredSecret =
+    configuredPaymentSecret || process.env.PAYMENT_WEBHOOK_SECRET;
   const expectedSecret = configuredSecret ||
     (isEmulatorRuntime() ? emulatorPaymentSecret : undefined);
 
@@ -445,16 +451,18 @@ export function createAuthService(
 
   /**
    * AUTH - Create an activation code after a simulated payment event
-   *
-   * @param {CreateActivationCodeInput} data Activation code metadata.
-   * @param {string | undefined} paymentSecret Payment webhook secret header.
-   * @return {Promise<ActivationCodeResponse>} Created activation code metadata.
-   */
+ *
+ * @param {CreateActivationCodeInput} data Activation code metadata.
+ * @param {string | undefined} paymentSecret Payment webhook secret header.
+ * @param {string | undefined} configuredPaymentSecret Runtime secret.
+ * @return {Promise<ActivationCodeResponse>} Created activation code metadata.
+ */
   async function createActivationCode(
     data: CreateActivationCodeInput,
-    paymentSecret: string | undefined
+    paymentSecret: string | undefined,
+    configuredPaymentSecret?: string
   ): Promise<ActivationCodeResponse> {
-    validatePaymentSecret(paymentSecret);
+    validatePaymentSecret(paymentSecret, configuredPaymentSecret);
 
     const email = data.email?.trim().toLowerCase() || null;
     const expiresInHours = data.expiresInHours || 24;
