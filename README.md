@@ -130,7 +130,7 @@ firebase_basic/
 
 ## Requisitos
 
-- Node.js 20.x.
+- Node.js 22.x.
 - npm.
 - Git.
 - Cuenta Firebase con acceso al proyecto `guarderia-dev`.
@@ -597,7 +597,7 @@ Si ya existían funciones desplegadas en `us-central1`, después de mover a `sou
 - PDN didáctico: `guarderia-dev`.
 - Firestore: `southamerica-east1`.
 - Cloud Functions: `southamerica-east1`.
-- Runtime Functions: Node.js 20.
+- Runtime Functions: Node.js 22.
 - Lenguaje: TypeScript.
 
 ## Documentación Útil
