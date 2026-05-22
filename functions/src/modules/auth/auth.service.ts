@@ -10,11 +10,16 @@ import {
 import type {AppRole as UserRole} from "../../shared";
 import * as defaultActivationCodeRepository
   from "./activationCode.repository";
+import * as defaultActivationEmailRepository
+  from "./activationEmail.repository";
 import * as defaultAuthRepository from "./auth.repository";
 import * as defaultUserProfileRepository from "./userProfile.repository";
 import type {
   ActivationCodeRecord,
 } from "./activationCode.repository";
+import type {
+  ActivationEmailData,
+} from "./activationEmail.repository";
 import type {
   CreateAuthUserData,
 } from "./auth.repository";
@@ -64,6 +69,8 @@ export type UserRoleResponse = {
 
 export type ActivationCodeResponse = {
   code?: string;
+  delivery: "email_queued" | "not_requested";
+  emailId?: string;
   email: string | null;
   role: "admin";
   used: false;
@@ -101,6 +108,10 @@ export type ActivationCodeRepository = {
   createActivationCode(data: ActivationCodeRecord): Promise<void>;
 };
 
+export type ActivationEmailRepository = {
+  queueActivationEmail(data: ActivationEmailData): Promise<string>;
+};
+
 export type UserProfileRepository = {
   saveUserProfile(data: UserProfileData): Promise<void>;
   activateUserProfile(data: UserProfileData): Promise<void>;
@@ -109,6 +120,7 @@ export type UserProfileRepository = {
 
 export type AuthServiceDependencies = {
   activationCodeRepository: ActivationCodeRepository;
+  activationEmailRepository: ActivationEmailRepository;
   authRepository: AuthRepository;
   userProfileRepository: UserProfileRepository;
 };
@@ -186,6 +198,10 @@ function validatePaymentSecret(
   paymentSecret: string | undefined,
   configuredPaymentSecret?: string
 ) {
+  if (isEmulatorRuntime() && paymentSecret === emulatorPaymentSecret) {
+    return;
+  }
+
   const configuredSecret =
     configuredPaymentSecret || process.env.PAYMENT_WEBHOOK_SECRET;
   const expectedSecret = configuredSecret ||
@@ -217,6 +233,7 @@ export function createAuthService(
 ): AuthService {
   const {
     activationCodeRepository,
+    activationEmailRepository,
     authRepository,
     userProfileRepository,
   } = dependencies;
@@ -471,6 +488,7 @@ export function createAuthService(
     );
     const code = generateActivationCode();
     const codeHash = hashActivationCode(code);
+    const expiresAtIso = expiresAt.toDate().toISOString();
 
     await activationCodeRepository.createActivationCode({
       codeHash,
@@ -480,11 +498,20 @@ export function createAuthService(
       expiresAt,
     });
 
+    const emailId = email ? await activationEmailRepository
+      .queueActivationEmail({
+        email,
+        activationCode: code,
+        expiresAt: expiresAtIso,
+      }) : undefined;
+
     const response: ActivationCodeResponse = {
+      delivery: emailId ? "email_queued" : "not_requested",
+      emailId,
       email,
       role: "admin",
       used: false,
-      expiresAt: expiresAt.toDate().toISOString(),
+      expiresAt: expiresAtIso,
     };
 
     if (shouldExposeActivationCode()) {
@@ -542,6 +569,7 @@ export function createAuthService(
 /** Default Auth service instance. */
 export const authService = createAuthService({
   activationCodeRepository: defaultActivationCodeRepository,
+  activationEmailRepository: defaultActivationEmailRepository,
   authRepository: defaultAuthRepository,
   userProfileRepository: defaultUserProfileRepository,
 });

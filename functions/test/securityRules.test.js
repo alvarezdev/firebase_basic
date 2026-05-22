@@ -88,6 +88,14 @@ test.beforeEach(async () => {
       used: false,
     });
 
+    await setDoc(doc(firestore, "mail/test-email"), {
+      to: ["admin@example.com"],
+      message: {
+        subject: "Activation code",
+        text: "SUB-TEST",
+      },
+    });
+
     await uploadString(
       ref(storage, "users/user-uid/file.txt"),
       "User file"
@@ -185,6 +193,19 @@ test("Firestore blocks direct access to activation codes", async () => {
   const adminDb = firestoreFor({uid: "admin-uid", claims: {role: "admin"}});
 
   await assertFails(getDoc(doc(adminDb, "activationCodes/SUB-TEST")));
+});
+
+test("Firestore blocks direct access to queued emails", async () => {
+  const adminDb = firestoreFor({uid: "admin-uid", claims: {role: "admin"}});
+
+  await assertFails(getDoc(doc(adminDb, "mail/test-email")));
+  await assertFails(setDoc(doc(adminDb, "mail/new-email"), {
+    to: ["admin@example.com"],
+    message: {
+      subject: "Activation code",
+      text: "SUB-TEST",
+    },
+  }));
 });
 
 test("Storage blocks unauthenticated file access", async () => {

@@ -238,6 +238,26 @@ Después de crear o cambiar el secret, despliega Functions:
 npm run deploy:functions
 ```
 
+## Email de Activación
+
+`createActivationCode` genera un código tipo `SUB-...`, guarda solo su hash en:
+
+```text
+activationCodes/{codeHash}
+```
+
+y, cuando recibe un email, deja un correo pendiente en:
+
+```text
+mail/{mailId}
+```
+
+con el formato de la extensión oficial **Trigger Email from Firestore**.
+Ese correo contiene el código y un enlace didáctico de registro admin.
+
+En emuladores el endpoint también devuelve `code` para facilitar pruebas manuales.
+En remoto no debe devolverse el código; el flujo real es recibirlo por email.
+
 ## App Check
 
 Las funciones callable tienen App Check obligatorio:
@@ -283,6 +303,23 @@ curl -X POST http://localhost:5001/guarderia-dev/southamerica-east1/createActiva
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com"}'
 ```
+
+Respuesta esperada en local:
+
+```json
+{
+  "delivery": "email_queued",
+  "emailId": "...",
+  "email": "admin@example.com",
+  "role": "admin",
+  "used": false,
+  "expiresAt": "...",
+  "code": "SUB-..."
+}
+```
+
+En remoto, `code` no aparece en la respuesta. El código llega por el correo
+encolado en `mail/{mailId}`.
 
 Registrar admin usando el código:
 
@@ -608,6 +645,7 @@ Si ya existían funciones desplegadas en `us-central1`, después de mover a `sou
 - [Cloud Storage for Firebase](https://firebase.google.com/docs/storage)
 - [Firebase Security Rules](https://firebase.google.com/docs/rules)
 - [Firebase CLI](https://firebase.google.com/docs/cli)
+- [Trigger Email from Firestore](https://firebase.google.com/docs/extensions/official/firestore-send-email)
 
 ---
 

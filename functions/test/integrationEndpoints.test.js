@@ -78,6 +78,8 @@ async function createActivationCode(email) {
   assert.equal(response.status, 201);
   assert.equal(response.body.email, email);
   assert.equal(response.body.role, "admin");
+  assert.equal(response.body.delivery, "email_queued");
+  assert.ok(response.body.emailId);
   assert.ok(response.body.code);
   assert.match(response.body.code, /^SUB-[A-F0-9]{32}$/);
 
@@ -93,6 +95,18 @@ async function createActivationCode(email) {
   assert.equal(codeSnapshot.exists, true);
   assert.equal(codeData.code, undefined);
   assert.equal(codeData.codeHash, codeHash);
+
+  const emailSnapshot = await firestore
+    .collection("mail")
+    .doc(response.body.emailId)
+    .get();
+  const emailData = emailSnapshot.data();
+
+  assert.equal(emailSnapshot.exists, true);
+  assert.deepEqual(emailData.to, [email]);
+  assert.equal(emailData.type, "activation_code");
+  assert.match(emailData.message.text, new RegExp(response.body.code));
+  assert.match(emailData.message.html, new RegExp(response.body.code));
 
   return response.body.code;
 }

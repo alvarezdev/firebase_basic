@@ -42,5 +42,9 @@ service cloud.firestore {
     match /activationCodes/{code} {
       allow read, write: if false;
     }
+
+    match /mail/{mailId} {
+      allow read, write: if false;
+    }
   }
 }
